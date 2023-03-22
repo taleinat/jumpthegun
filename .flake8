@@ -1,0 +1,8 @@
+[flake8]
+extend_exclude =
+    vendor,
+    venv,
+    .venv,
+    tests/testproj
+select = E,F,W
+ignore = E203, E266, E501, W503

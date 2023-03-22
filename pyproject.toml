@@ -1,0 +1,84 @@
+[project]
+name = "jumpthegun"
+description = "Make Python CLI tools win the speed race, by cheating!"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.7"
+authors = [
+  { name = "Tal Einat", email = "taleinat@gmail.com" },
+]
+keywords = [
+  "cli",
+]
+classifiers = [
+  "Development Status :: 1 - Planning",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: MacOS :: MacOS X",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.6",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+  "tomli>=1.1.0; python_version < '3.11'",
+]
+dynamic = ["readme", "version"]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=7,<8",
+]
+
+[project.scripts]
+jumpthegunctl = "jumpthegun.jumpthegunctl:main"
+
+[project.urls]
+Homepage = "https://github.com/taleinat/jumpthegun"
+
+[build-system]
+requires = ["hatchling>=1.8.0", "hatch-fancy-pypi-readme"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/jumpthegun/__version__.py"
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "/.github",
+  "/docs",
+]
+[tool.hatch.build.targets.sdist.shared-data]
+"src/jumpthegun.sh" = "bin/jumpthegun"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["src"]
+sources = ["src"]
+[tool.hatch.build.targets.wheel.shared-data]
+"src/jumpthegun.sh" = "bin/jumpthegun"
+
+[tool.hatch.metadata.hooks.fancy-pypi-readme]
+content-type = "text/markdown"
+fragments = [
+  { path = "README.md" },
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py36", "py37", "py38", "py39", "py310", "py311"]
+include = '\.pyi?$'
+extend-exclude = 'vendor|tests/testproj'
+
+[tool.isort]
+atomic = true
+profile = "black"
+line_length = 88
+skip_gitignore = true
+extend_skip_glob = ["vendor", "tests/testproj"]
+known_first_party = ["jumpthegun"]

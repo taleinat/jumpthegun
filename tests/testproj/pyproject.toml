@@ -1,0 +1,19 @@
+[project]
+name = "testproj"
+
+[project.optional-dependencies]
+lint = [
+  "black",
+  "flake8",
+  "isort",
+]
+
+[tool.black]
+line-length = 88
+target-version = ['py36', 'py37', 'py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+
+[tool.isort]
+atomic = true
+profile = "black"
+line_length = 88
