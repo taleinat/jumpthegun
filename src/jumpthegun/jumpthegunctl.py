@@ -246,7 +246,6 @@ def start(tool_name: str, daemonize: bool = True) -> None:
 
             # Avoid "zombie" processes: Reap completed sub-processes.
             done_subproc_pids = {x for x in subproc_pids if os.waitpid(x, os.WNOHANG)[0] != 0}
-            print(f"{done_subproc_pids=}")
             subproc_pids -= done_subproc_pids
             subproc_pids.add(newpid)
     except BaseException:

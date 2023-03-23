@@ -5,7 +5,7 @@ import time
 
 def sleep_and_exit_on_signal():
     def signal_handler(signum, frame):
-        print(f"Received signal: {signum} ({signal.strsignal(signum)})", flush=True)
+        print(f"Received signal: {signum}", flush=True)
         sys.exit()
 
     signal.signal(signal.SIGINT, signal_handler)

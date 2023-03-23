@@ -6,10 +6,10 @@ function usage() {
   echo
   echo "Available commands:"
   echo
-  echo "start tool_name            Start a background daemon for a CLI tool."
-  echo "stop tool_name             Stop a background daemon for a CLI tool."
-  echo "restart tool_name          Restart a background daemon for a CLI tool."
-  echo "run tool_name [arg ...]    Run a CLI tool using a background process."
+  echo "run tool_name [OPTIONS] [arg ...]    Run a CLI tool."
+  echo "start tool_name                      Start a daemon for a CLI tool."
+  echo "stop tool_name                       Stop a daemon for a CLI tool."
+  echo "restart tool_name                    Restart a daemon for a CLI tool."
   echo
 }
 
@@ -19,6 +19,7 @@ function err_exit() {
   exit 1
 }
 
+autorun=1
 case "${1:-}" in
 -h|--help)
   usage && exit 0 ;;
@@ -27,6 +28,10 @@ start|stop|restart|version|--version)
 run)
   shift
   [[ $# -eq 0 ]] && usage && exit 1
+  if [[ "$1" == "--no-autorun" ]]; then
+    autorun=0
+    shift
+  fi
   ([[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]) && usage && exit 0
   tool_name="$1"
   shift
@@ -34,7 +39,6 @@ run)
 *)
   usage && exit 1 ;;
 esac
-
 
 # Find service runtime directory.
 runtime_dir="${XDG_RUNTIME_DIR:-}"
@@ -46,7 +50,8 @@ else
   service_runtime_dirs=("$temp_dir/jumpthegun-$USER"-??????)
   shopt -u nullglob
   if [[ ${#service_runtime_dirs[@]} -eq 0 ]]; then
-    err_exit "Service not running."
+    [[ autorun -eq 1 ]] && jumpthegunctl start "$tool_name" >/dev/null 2>&1
+    exec "$tool_name" "$@"
   elif [[ ${#service_runtime_dirs[@]} -gt 1 ]]; then
     err_exit "Error: Multiple service runtime dirs found."
   fi
@@ -58,8 +63,13 @@ isolated_root="$(dirname "$(command -v "$tool_name")")"
 isolated_root_hash="$(echo -n "$isolated_root" | sha256sum - | head -c 8)"
 isolated_path="$service_runtime_dir/$isolated_root_hash/"
 
+# Check that port file exists.
+if [[ ! -f "$isolated_path/$tool_name.port" ]]; then
+  [[ autorun -eq 1 ]] && jumpthegunctl start "$tool_name" >/dev/null 2>&1
+  exec "$tool_name" "$@"
+fi
+
 # Read port from port file.
-[ -f "$isolated_path/$tool_name.port" ] || err_exit "Service not running."
 IFS= read -r port <"$isolated_path/$tool_name.port"
 
 # Open TCP connection.

@@ -7,6 +7,7 @@ import sys
 import tempfile
 import textwrap
 from pathlib import Path
+from typing import List, Union
 
 import pytest
 
@@ -72,15 +73,47 @@ def testproj() -> Path:
 def test_jumpthegun_start_run_stop(testproj, tool_cmd):
     without_jumpthegun_proc = run(tool_cmd, proj_path=testproj)
     assert without_jumpthegun_proc.returncode != 0
+
     run(["jumpthegun", "start", tool_cmd[0]], proj_path=testproj, check=True)
     try:
-        with_jumpthegun_proc = run(["jumpthegun", "run", *tool_cmd], proj_path=testproj)
+        proc1 = run(["jumpthegun", "run", "--no-autorun", *tool_cmd], proj_path=testproj)
+        proc2 = run(["jumpthegun", "run", *tool_cmd], proj_path=testproj)
     finally:
         run(["jumpthegun", "stop", tool_cmd[0]], proj_path=testproj, check=True)
 
-    assert with_jumpthegun_proc.stdout == without_jumpthegun_proc.stdout
-    assert with_jumpthegun_proc.stderr == without_jumpthegun_proc.stderr
-    assert with_jumpthegun_proc.returncode == without_jumpthegun_proc.returncode
+    assert proc1.stdout == without_jumpthegun_proc.stdout
+    assert proc1.stderr == without_jumpthegun_proc.stderr
+    assert proc1.returncode == without_jumpthegun_proc.returncode
+
+    assert proc2.stdout == without_jumpthegun_proc.stdout
+    assert proc2.stderr == without_jumpthegun_proc.stderr
+    assert proc2.returncode == without_jumpthegun_proc.returncode
+
+
+def test_jumpthegun_autorun(testproj):
+    tool_cmd = ["flake8"]
+
+    without_jumpthegun_proc = run(tool_cmd, proj_path=testproj)
+    assert without_jumpthegun_proc.returncode != 0
+
+    try:
+        proc1 = run(["jumpthegun", "run", "--no-autorun", *tool_cmd], proj_path=testproj)
+        proc2 = run(["jumpthegun", "run", *tool_cmd], proj_path=testproj)
+        proc3 = run(["jumpthegun", "run", "--no-autorun", *tool_cmd], proj_path=testproj)
+    finally:
+        run(["jumpthegun", "stop", tool_cmd[0]], proj_path=testproj, check=True)
+
+    assert proc1.stdout == without_jumpthegun_proc.stdout
+    assert proc1.stderr == without_jumpthegun_proc.stderr
+    assert proc1.returncode == without_jumpthegun_proc.returncode
+
+    assert proc2.stdout == without_jumpthegun_proc.stdout
+    assert proc2.stderr == without_jumpthegun_proc.stderr
+    assert proc2.returncode == without_jumpthegun_proc.returncode
+
+    assert proc3.stdout == without_jumpthegun_proc.stdout
+    assert proc3.stderr == without_jumpthegun_proc.stderr
+    assert proc3.returncode == without_jumpthegun_proc.returncode
 
 
 @pytest.mark.parametrize("signum", [signal.SIGINT, signal.SIGTERM, signal.SIGUSR1, signal.SIGUSR2])
@@ -88,7 +121,7 @@ def test_signal_forwarding(testproj, signum):
     subcmd = ["__test_sleep_and_exit_on_signal"]
     run(["jumpthegun", "start", subcmd[0]], proj_path=testproj, check=True)
     try:
-        proc: subprocess.Popen = run(["jumpthegun", "run", *subcmd], proj_path=testproj, background=True)
+        proc: subprocess.Popen = run(["jumpthegun", "run", "--no-autorun", *subcmd], proj_path=testproj, background=True)
         assert proc.stdout.readline() == b"Sleeping...\n"
         assert proc.poll() is None
         proc.send_signal(signum)
@@ -98,7 +131,7 @@ def test_signal_forwarding(testproj, signum):
         run(["jumpthegun", "stop", subcmd[0]], proj_path=testproj, check=True)
 
 
-def run(cmd: list[str], proj_path: Path, background: bool = False, check: bool = False) -> subprocess.CompletedProcess[bytes] | subprocess.Popen:
+def run(cmd: List[str], proj_path: Path, background: bool = False, check: bool = False) -> Union[subprocess.CompletedProcess, subprocess.Popen]:
     if background and check:
         raise ValueError("Must not set both background=True and check=True.")
 

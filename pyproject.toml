@@ -29,7 +29,8 @@ classifiers = [
 dependencies = [
   "tomli>=1.1.0; python_version < '3.11'",
 ]
-dynamic = ["readme", "version"]
+readme = "README.md"
+dynamic = ["version"]
 
 [project.optional-dependencies]
 test = [
@@ -43,7 +44,7 @@ jumpthegunctl = "jumpthegun.jumpthegunctl:main"
 Homepage = "https://github.com/taleinat/jumpthegun"
 
 [build-system]
-requires = ["hatchling>=1.8.0", "hatch-fancy-pypi-readme"]
+requires = ["hatchling>=1.8.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.version]
@@ -62,12 +63,6 @@ only-include = ["src"]
 sources = ["src"]
 [tool.hatch.build.targets.wheel.shared-data]
 "src/jumpthegun.sh" = "bin/jumpthegun"
-
-[tool.hatch.metadata.hooks.fancy-pypi-readme]
-content-type = "text/markdown"
-fragments = [
-  { path = "README.md" },
-]
 
 [tool.black]
 line-length = 88
