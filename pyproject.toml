@@ -18,7 +18,6 @@ classifiers = [
   "Operating System :: POSIX :: Linux",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.6",
   "Programming Language :: Python :: 3.7",
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
@@ -66,7 +65,7 @@ sources = ["src"]
 
 [tool.black]
 line-length = 88
-target-version = ["py36", "py37", "py38", "py39", "py310", "py311"]
+target-version = ["py37", "py38", "py39", "py310", "py311"]
 include = '\.pyi?$'
 extend-exclude = 'vendor|tests/testproj'
 
