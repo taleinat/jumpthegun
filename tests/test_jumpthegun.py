@@ -4,7 +4,6 @@ import shutil
 import signal
 import subprocess
 import sys
-import tempfile
 import textwrap
 from pathlib import Path
 from typing import List, Union
@@ -13,9 +12,9 @@ import pytest
 
 
 def get_bin_path(project_path: Path) -> Path:
-    return (
-        project_path.parent / "venv" / ("Scripts" if sys.platform == "win32" else "bin")
-    )
+    venv_path = project_path.with_name(project_path.name + "_venv")
+    bin_dir_name = "Scripts" if sys.platform == "win32" else "bin"
+    return venv_path / bin_dir_name
 
 
 # @pytest.fixture(scope="session")
@@ -39,26 +38,38 @@ def get_bin_path(project_path: Path) -> Path:
 
 @pytest.fixture(scope="session")
 def testproj() -> Path:
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        proj_dir = Path(tmp_dir) / "testproj"
+    root_dir = Path(__file__).parent.parent
+    testenvs_dir = root_dir / ".testenvs"
+    testenvs_dir.mkdir(exist_ok=True)
+    ver_dir = testenvs_dir / sys.version.split()[0]
+    ver_dir.mkdir(exist_ok=True)
+
+    proj_dir = ver_dir / "testproj"
+    if not proj_dir.exists():
         sources_dir = Path(__file__).parent / "testproj"
         shutil.copytree(sources_dir, proj_dir)
-        venv_path = Path(tmp_dir) / "venv"
-        subprocess.run([sys.executable, "-m", "venv", str(venv_path)], check=True)
+        venv_path = get_bin_path(proj_dir).parent
+        subprocess.run([sys.executable, "-m", "venv", str(venv_path.resolve())], check=True)
         bin_path = get_bin_path(proj_dir)
         subprocess.run(
-            [str(bin_path / "pip"), "install", ".", "black", "flake8", "isort"],
-            cwd=str(Path(__file__).parents[1]),
+            [str(bin_path / "pip"), "install", "black", "flake8", "isort"],
+            cwd=str(root_dir),
+            check=True,
+        )
+        subprocess.run(
+            [str(bin_path / "pip"), "install", "-e", "."],
+            cwd=str(root_dir),
             check=True,
         )
         sleep_and_exit_on_signal_script = textwrap.dedent("""\
             #!/usr/bin/env python
             import jumpthegun.testutils
-            
+
             jumpthegun.testutils.sleep_and_exit_on_signal()
             """)
         (bin_path / "__test_sleep_and_exit_on_signal").write_text(sleep_and_exit_on_signal_script)
-        yield proj_dir
+
+    yield proj_dir
 
 
 @pytest.mark.parametrize(

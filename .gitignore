@@ -130,3 +130,6 @@ dmypy.json
 
 # IntelliJ / PyCharm
 .idea/
+
+# Test environments
+.testenvs/
