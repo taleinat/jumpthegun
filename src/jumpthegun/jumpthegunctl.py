@@ -14,12 +14,13 @@ import time
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, BinaryIO, Optional, Set, Tuple, Union, cast
+from typing import Any, BinaryIO, Optional, Set, Tuple, cast
 
-from jumpthegun.project import get_tool_names
 from vendor.filelock import FileLock
 
 from .__version__ import __version__
+from .output_redirect import SocketOutputRedirector
+from .project import get_tool_names
 from .tools import ToolExceptionBase, UnsupportedTool, get_tool_runner
 from .utils import pid_exists
 
@@ -38,31 +39,6 @@ class DaemonAlreadyExistsError(ToolExceptionBase):
 class DaemonDoesNotExistError(ToolExceptionBase):
     def __str__(self):
         return f'Jump the Gun daemon process for tool "{self.tool_name}" does not exist.'
-
-
-class _SocketWriter(io.RawIOBase):
-    """TODO!"""
-
-    def __init__(self, sock: socket.socket, prefix: Union[bytes, bytearray]) -> None:
-        self._sock = sock
-        self._prefix = prefix
-
-    def readable(self) -> bool:
-        return False
-
-    def writable(self) -> bool:
-        return True
-
-    def write(self, b: Union[bytes, bytearray]) -> int:  # type: ignore[override]
-        n_newlines = b.count(10)
-        # print(b"%b%d\n%b\n" % (self._prefix, n_newlines, b), file=sys.__stderr__)
-        self._sock.sendall(b"%b%d\n%b\n" % (self._prefix, n_newlines, b))
-        # print("DONE WRITING", file=sys.__stderr__)
-        with memoryview(b) as view:
-            return view.nbytes
-
-    def fileno(self) -> Any:
-        return self._sock.fileno()
 
 
 class StdinWrapper(io.RawIOBase):
@@ -222,7 +198,14 @@ def daemon_teardown(
 def start(tool_name: str, daemonize: bool = True) -> None:
     config = read_config()
 
-    tool_runner = get_tool_runner(tool_name)
+    # Import the tool and get its entrypoint function.
+    #
+    # Override sys.stdout and sys.stderr while loading the tool runner,
+    # so that any references to them kept during module imports (e.g for
+    # setting up logging) already reference the overrides.
+    output_redirector = SocketOutputRedirector()
+    with output_redirector.override_outputs_for_imports():
+        tool_runner = get_tool_runner(tool_name)
 
     pid_file_path, port_file_path = get_pid_and_port_file_paths(tool_name)
 
@@ -249,14 +232,14 @@ def start(tool_name: str, daemonize: bool = True) -> None:
             sys.exit(0)
 
         # redirect standard file descriptors
-        sys.stdout.flush()
-        sys.stderr.flush()
+        sys.__stdout__.flush()
+        sys.__stderr__.flush()
         stdin = open("/dev/null", "rb")
         stdout = open("/dev/null", "ab")
         stderr = open("/dev/null", "ab")
-        os.dup2(stdin.fileno(), sys.stdin.fileno())
-        os.dup2(stdout.fileno(), sys.stdout.fileno())
-        os.dup2(stderr.fileno(), sys.stderr.fileno())
+        os.dup2(stdin.fileno(), sys.__stdin__.fileno())
+        os.dup2(stdout.fileno(), sys.__stdout__.fileno())
+        os.dup2(stderr.fileno(), sys.__stderr__.fileno())
 
     # Write pid file.
     pid = os.getpid()
@@ -309,12 +292,7 @@ def start(tool_name: str, daemonize: bool = True) -> None:
 
     sys.stdin.close()
     sys.stdin = io.TextIOWrapper(cast(BinaryIO, StdinWrapper(conn)))
-    sys.stdout = io.TextIOWrapper(
-        cast(BinaryIO, _SocketWriter(conn, b"1")), write_through=True
-    )
-    sys.stderr = io.TextIOWrapper(
-        cast(BinaryIO, _SocketWriter(conn, b"2")), write_through=True
-    )
+    output_redirector.set_socket(conn)
 
     # start_time = time.monotonic()
     try:

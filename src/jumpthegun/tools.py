@@ -15,6 +15,7 @@ runners: Dict[str, Union[str, Callable[[], None]]] = {
     "flake8": "flake8.main.cli:main",
     "isort": "isort.main:main",
     "mypy": "mypy.__main__:console_entry",
+    "pre-commit": "pre_commit.main:main",
     "pylint": "pylint:run_pylint",
     "__test_sleep_and_exit_on_signal": "jumpthegun.testutils:sleep_and_exit_on_signal",
 }
