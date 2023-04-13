@@ -1,4 +1,5 @@
 import importlib
+from functools import reduce
 from typing import Callable, Dict, Union
 
 __all__ = [
@@ -57,5 +58,5 @@ def get_tool_runner(tool_name: str) -> Callable[[], None]:
 
     module_name, function_name = runner.split(":")
     module = importlib.import_module(module_name)
-    function = getattr(module, function_name)
+    function = reduce(getattr, function_name.split("."), module)
     return function
