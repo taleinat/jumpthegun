@@ -21,7 +21,7 @@ from vendor.filelock import FileLock
 from .__version__ import __version__
 from .output_redirect import SocketOutputRedirector
 from .project import get_tool_names
-from .tools import ToolExceptionBase, UnsupportedTool, get_tool_runner
+from .tools import ToolExceptionBase, UnsupportedTool, get_tool_entrypoint
 from .utils import pid_exists
 
 
@@ -205,7 +205,7 @@ def start(tool_name: str, daemonize: bool = True) -> None:
     # setting up logging) already reference the overrides.
     output_redirector = SocketOutputRedirector()
     with output_redirector.override_outputs_for_imports():
-        tool_runner = get_tool_runner(tool_name)
+        tool_runner = get_tool_entrypoint(tool_name)
 
     pid_file_path, port_file_path = get_pid_and_port_file_paths(tool_name)
 
@@ -329,7 +329,7 @@ def start(tool_name: str, daemonize: bool = True) -> None:
 
 def stop(tool_name: str) -> None:
     try:
-        get_tool_runner(tool_name)
+        get_tool_entrypoint(tool_name)
     except UnsupportedTool:
         raise DaemonDoesNotExistError(tool_name)
 
