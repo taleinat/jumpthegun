@@ -60,7 +60,11 @@ fi
 
 # Calculate the isolated path for pid and port files.
 isolated_root="$(dirname "$(command -v "$tool_name")")"
-isolated_root_hash="$(echo -n "$isolated_root" | sha256sum - | head -c 8)"
+if [[ $OSTYPE == "darwin"* ]]; then
+  isolated_root_hash="$(echo -n "$isolated_root" | shasum -a 256 - | head -c 8)"
+else
+  isolated_root_hash="$(echo -n "$isolated_root" | sha256sum - | head -c 8)"
+fi
 isolated_path="$service_runtime_dir/$isolated_root_hash/"
 
 # Check that port file exists.
