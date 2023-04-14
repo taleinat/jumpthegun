@@ -24,7 +24,7 @@ Install into the same Python env where you have tools like black or flake8
 installed:
 
 ```shell
-pip install git+https://github.com/taleinat/jumpthegun.git
+pip install jumpthegun
 ```
 
 
@@ -33,12 +33,43 @@ pip install git+https://github.com/taleinat/jumpthegun.git
 Example:
 
 ```shell
-jumpthegun start black
+jumpthegun run black --help
+
+time black --help
 time jumpthegun run black --help
+
 time black --check .
 time jumpthegun run black --check .
-jumpthegun stop black
 ```
+
+## With pre-commit
+
+[pre-commit](https://pre-commit.com/) is awesome, but it makes commits slower.
+JumpTheGun fixes that!
+
+Example config (`.pre-commit-config.yaml`):
+```yaml
+repos:
+- repo: https://github.com/PyCQA/flake8
+  rev: 6.0.0
+  hooks:
+  - id: flake8
+    entry: jumpthegun run flake8
+    additional_dependencies:
+    - jumpthegun
+```
+
+You may need to run `pre-commit install --install-hooks` if you've changed the
+config in an existing working copy of a project.
+
+Then, edit your `.git/hooks/pre-commit` and make this change:
+
+```shell
+if [ -x "$INSTALL_PYTHON" ]; then
+    #exec "$INSTALL_PYTHON" -mpre_commit "${ARGS[@]}"
+    exec jumpthegun run pre-commit "${ARGS[@]}"
+```
+
 
 # Copyright & License
 
