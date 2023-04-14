@@ -5,7 +5,7 @@ import pytest
 
 from jumpthegun.tools import find_entrypoint_func_in_entrypoint_script
 
-
+# Script 1: With encoding comment, using a class's method.
 script1_code = textwrap.dedent('''\
     #!/nonexistent/path/to/fake/venv/bin/python
     # -*- coding: utf-8 -*-
@@ -18,6 +18,7 @@ script1_code = textwrap.dedent('''\
 ''')
 script1_entrypoint_str = "module_name.main:class_name.method_name"
 
+# Script 2: Without encoding comment, using a function.
 script2_code = textwrap.dedent('''\
     #!/nonexistent/path/to/fake/venv/bin/python
     import re
@@ -29,6 +30,7 @@ script2_code = textwrap.dedent('''\
 ''')
 script2_entrypoint_str = "module_name.submodule_name.main:func_name"
 
+# Script 3: Like script 2, but with double quotes.
 script3_code = textwrap.dedent('''\
     #!/nonexistent/path/to/fake/venv/bin/python
     import re
