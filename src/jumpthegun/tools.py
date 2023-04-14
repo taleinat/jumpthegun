@@ -67,7 +67,7 @@ SCRIPT_ENCODING_HEADER_RE = re.compile(
     re.MULTILINE,
 )
 # See distlib: https://github.com/pypa/distlib/blob/05375908c1b2d6b0e74bdeb574569d3609db9f56/distlib/scripts.py#L43-L50
-ENTRYPOINT_SCRIPT_TEMPLATE = textwrap.dedent(r'''
+ENTRYPOINT_SCRIPT_DISTLIB_TEMPLATE = textwrap.dedent(r'''
     import re
     import sys
     from %(module)s import %(import_name)s
@@ -75,14 +75,23 @@ ENTRYPOINT_SCRIPT_TEMPLATE = textwrap.dedent(r'''
         sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
         sys.exit(%(func)s())
     ''')[1:]
-ENTRYPOINT_SCRIPT_RE = re.compile(
-    re.sub(
-        re.escape(re.escape('%(')) + r'(\w+)' + re.escape(re.escape(')s')),
-        r'(?P<\1>(?:\\w|\\.)+)',
-        re.escape(ENTRYPOINT_SCRIPT_TEMPLATE),
-    ),
-    re.IGNORECASE,
-)
+ENTRYPOINT_SCRIPT_TEMPLATES = [
+    ENTRYPOINT_SCRIPT_DISTLIB_TEMPLATE,
+    # NOTE: For handling entrypoint script that's based off distlib, but has double quote instead.
+    #       E.g. `sqlfluff` is one such library with said script template.
+    ENTRYPOINT_SCRIPT_DISTLIB_TEMPLATE.replace("'", '"')
+]
+ENTRYPOINT_SCRIPT_RE_LIST = [
+    re.compile(
+        re.sub(
+            re.escape(re.escape('%(')) + r'(\w+)' + re.escape(re.escape(')s')),
+            r'(?P<\1>(?:\\w|\\.)+)',
+            re.escape(template),
+        ),
+        re.IGNORECASE,
+    )
+    for template in ENTRYPOINT_SCRIPT_TEMPLATES
+]
 
 
 def find_entrypoint_func_in_entrypoint_script(tool_name: str) -> str | None:
@@ -105,6 +114,7 @@ def find_entrypoint_func_in_entrypoint_script(tool_name: str) -> str | None:
         return None
 
     # Try to find an entrypoint function in the script's code.
-    if entrypoint_script_match := ENTRYPOINT_SCRIPT_RE.search(code):
-        groupdict = entrypoint_script_match.groupdict()
-        return f"{groupdict['module']}:{groupdict['func']}"
+    for entrypoint_script_re in ENTRYPOINT_SCRIPT_RE_LIST:
+        if entrypoint_script_match := entrypoint_script_re.search(code):
+            groupdict = entrypoint_script_match.groupdict()
+            return f"{groupdict['module']}:{groupdict['func']}"
