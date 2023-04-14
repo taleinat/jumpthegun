@@ -67,7 +67,7 @@ SCRIPT_ENCODING_HEADER_RE = re.compile(
     re.MULTILINE,
 )
 # See distlib: https://github.com/pypa/distlib/blob/05375908c1b2d6b0e74bdeb574569d3609db9f56/distlib/scripts.py#L43-L50
-ENTRYPOINT_SCRIPT_TEMPLATE = textwrap.dedent(r'''
+entrypoint_script_template = textwrap.dedent(r'''
     import re
     import sys
     from %(module)s import %(import_name)s
@@ -75,12 +75,21 @@ ENTRYPOINT_SCRIPT_TEMPLATE = textwrap.dedent(r'''
         sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
         sys.exit(%(func)s())
     ''')[1:]
-ENTRYPOINT_SCRIPT_RE = re.compile(
-    re.sub(
-        re.escape(re.escape('%(')) + r'(\w+)' + re.escape(re.escape(')s')),
-        r'(?P<\1>(?:\\w|\\.)+)',
-        re.escape(ENTRYPOINT_SCRIPT_TEMPLATE),
-    ),
+entrypoint_script_regexp_str = re.sub(
+    # Escape twice: Once because this is creating a regexp string, and again
+    # because this uses re.sub() on the regexp string.
+    re.escape(re.escape('%(')) + r'(\w+)' + re.escape(re.escape(')s')),
+    r'(?P<\1>(?:\\w|\\.)+)',
+    re.escape(entrypoint_script_template),
+)
+# Sometimes such entrypoint scripts have double-quotes rather than
+# single-quotes.
+# Example: https://src.fedoraproject.org/rpms/python-wheel/blob/rawhide/f/wheel-entrypoint
+entrypoint_script_any_quote_regexp_str = entrypoint_script_regexp_str.replace(
+    re.escape("'"), r'''['"]''',
+)
+ENTRYPOINT_SCRIPT_REGEXP = re.compile(
+    entrypoint_script_any_quote_regexp_str,
     re.IGNORECASE,
 )
 
@@ -105,6 +114,6 @@ def find_entrypoint_func_in_entrypoint_script(tool_name: str) -> str | None:
         return None
 
     # Try to find an entrypoint function in the script's code.
-    if entrypoint_script_match := ENTRYPOINT_SCRIPT_RE.search(code):
+    if entrypoint_script_match := ENTRYPOINT_SCRIPT_REGEXP.search(code):
         groupdict = entrypoint_script_match.groupdict()
         return f"{groupdict['module']}:{groupdict['func']}"

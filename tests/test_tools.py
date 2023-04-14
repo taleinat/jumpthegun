@@ -29,16 +29,29 @@ script2_code = textwrap.dedent('''\
 ''')
 script2_entrypoint_str = "module_name.submodule_name.main:func_name"
 
+script3_code = textwrap.dedent('''\
+    #!/nonexistent/path/to/fake/venv/bin/python
+    import re
+    import sys
+    from module_name.submodule_name.main import func_name
+    if __name__ == "__main__":
+        sys.argv[0] = re.sub(r"(-script\\.pyw|\\.exe)?$", "", sys.argv[0])
+        sys.exit(func_name())
+''')
+script3_entrypoint_str = "module_name.submodule_name.main:func_name"
+
 
 @pytest.mark.parametrize(
     ["script_code", "entrypoint_str"],
     [
         (script1_code, script1_entrypoint_str),
         (script2_code, script2_entrypoint_str),
+        (script3_code, script3_entrypoint_str),
     ],
     ids=[
         "script1",
         "script2",
+        "script3",
     ],
 )
 def test_find_entrypoint_func_in_entrypoint_script(monkeypatch, tmp_path, script_code, entrypoint_str):
