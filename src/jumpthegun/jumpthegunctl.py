@@ -16,9 +16,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, BinaryIO, Optional, Tuple, cast
 
-from vendor.filelock import FileLock
-
 from .__version__ import __version__
+from ._vendor.filelock import FileLock
 from .output_redirect import SocketOutputRedirector
 from .tools import ToolExceptionBase, get_tool_entrypoint
 from .utils import pid_exists
@@ -32,12 +31,16 @@ class InvalidCommand(Exception):
 
 class DaemonAlreadyExistsError(ToolExceptionBase):
     def __str__(self):
-        return f'Jump the Gun daemon process for tool "{self.tool_name}" already exists.'
+        return (
+            f'Jump the Gun daemon process for tool "{self.tool_name}" already exists.'
+        )
 
 
 class DaemonDoesNotExistError(ToolExceptionBase):
     def __str__(self):
-        return f'Jump the Gun daemon process for tool "{self.tool_name}" does not exist.'
+        return (
+            f'Jump the Gun daemon process for tool "{self.tool_name}" does not exist.'
+        )
 
 
 class StdinWrapper(io.RawIOBase):
@@ -84,10 +87,10 @@ class StdinWrapper(io.RawIOBase):
 
 
 def get_xdg_config_dir() -> Path:
-    env_var = os.environ.get('XDG_CONFIG_HOME')
+    env_var = os.environ.get("XDG_CONFIG_HOME")
     if env_var:
         return Path(env_var)
-    return Path.home() / '.config'
+    return Path.home() / ".config"
 
 
 @dataclass(frozen=True)
@@ -267,7 +270,9 @@ def start(tool_name: str, daemonize: bool = True) -> None:
                 break
 
             # Avoid "zombie" processes: Reap completed sub-processes.
-            done_subproc_pids = {x for x in subproc_pids if os.waitpid(x, os.WNOHANG)[0] != 0}
+            done_subproc_pids = {
+                x for x in subproc_pids if os.waitpid(x, os.WNOHANG)[0] != 0
+            }
             subproc_pids -= done_subproc_pids
             subproc_pids.add(newpid)
     except BaseException as exc:
@@ -279,7 +284,9 @@ def start(tool_name: str, daemonize: bool = True) -> None:
                 pid_file_path.unlink(missing_ok=True)
                 port_file_path.unlink(missing_ok=True)
         if isinstance(exc, socket.timeout):
-            print(f"Exiting after receiving no connections for {config.idle_timeout_seconds} seconds.")
+            print(
+                f"Exiting after receiving no connections for {config.idle_timeout_seconds} seconds."
+            )
             return
         raise
 

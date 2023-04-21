@@ -67,12 +67,12 @@ sources = ["src"]
 line-length = 88
 target-version = ["py37", "py38", "py39", "py310", "py311"]
 include = '\.pyi?$'
-extend-exclude = 'vendor|tests/testproj'
+extend-exclude = 'src/jumpthegun/_vendor|tests/testproj'
 
 [tool.isort]
 atomic = true
 profile = "black"
 line_length = 88
 skip_gitignore = true
-extend_skip_glob = ["vendor", "tests/testproj"]
+extend_skip_glob = ["src/jumpthegun/_vendor", "tests/testproj"]
 known_first_party = ["jumpthegun"]
