@@ -57,7 +57,9 @@ def get_tool_entrypoint(tool_name: str) -> EntryPoint:
     if hasattr(all_entrypoints, "select"):
         entrypoints = all_entrypoints.select(name=tool_name, group="console_scripts")
     else:
-        entrypoints = [ep for ep in all_entrypoints["console_scripts"] if ep.name == tool_name]
+        entrypoints = [
+            ep for ep in all_entrypoints["console_scripts"] if ep.name == tool_name
+        ]
 
     if not entrypoints:
         raise EntrypointNotFound(tool_name)

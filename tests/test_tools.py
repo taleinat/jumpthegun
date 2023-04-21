@@ -1,6 +1,6 @@
 import pytest
 
-from jumpthegun.tools import get_tool_entrypoint, ToolExceptionBase
+from jumpthegun.tools import ToolExceptionBase, get_tool_entrypoint
 
 
 def test_find_pip():

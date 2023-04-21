@@ -49,7 +49,10 @@ def testproj() -> Path:
         sources_dir = Path(__file__).parent / "testproj"
         shutil.copytree(sources_dir, proj_dir)
         venv_path = get_bin_path(proj_dir).parent
-        subprocess.run([sys.executable, "-m", "venv", str(venv_path.resolve())], check=True)
+        subprocess.run(
+            [sys.executable, "-m", "venv", str(venv_path.resolve())],
+            check=True,
+        )
         bin_path = get_bin_path(proj_dir)
         # Need pip >= 21.3 for editable installation without setup.py.
         # See: https://pip.pypa.io/en/stable/news/#v21-3
@@ -68,13 +71,16 @@ def testproj() -> Path:
             cwd=str(root_dir),
             check=True,
         )
-        sleep_and_exit_on_signal_script = textwrap.dedent("""\
+        sleep_and_exit_on_signal_script = textwrap.dedent(
+            """\
             #!/usr/bin/env python
             import jumpthegun.testutils
 
             jumpthegun.testutils.sleep_and_exit_on_signal()
-            """)
-        (bin_path / "__test_sleep_and_exit_on_signal").write_text(sleep_and_exit_on_signal_script)
+            """
+        )
+        script_path = bin_path / "__test_sleep_and_exit_on_signal"
+        script_path.write_text(sleep_and_exit_on_signal_script)
 
     yield proj_dir
 
@@ -94,7 +100,9 @@ def test_jumpthegun_start_run_stop(testproj, tool_cmd):
 
     run(["jumpthegun", "start", tool_cmd[0]], proj_path=testproj, check=True)
     try:
-        proc1 = run(["jumpthegun", "run", "--no-autorun", *tool_cmd], proj_path=testproj)
+        proc1 = run(
+            ["jumpthegun", "run", "--no-autorun", *tool_cmd], proj_path=testproj
+        )
         proc2 = run(["jumpthegun", "run", *tool_cmd], proj_path=testproj)
     finally:
         run(["jumpthegun", "stop", tool_cmd[0]], proj_path=testproj, check=True)
@@ -115,9 +123,13 @@ def test_jumpthegun_autorun(testproj):
     assert without_jumpthegun_proc.returncode != 0
 
     try:
-        proc1 = run(["jumpthegun", "run", "--no-autorun", *tool_cmd], proj_path=testproj)
+        proc1 = run(
+            ["jumpthegun", "run", "--no-autorun", *tool_cmd], proj_path=testproj
+        )
         proc2 = run(["jumpthegun", "run", *tool_cmd], proj_path=testproj)
-        proc3 = run(["jumpthegun", "run", "--no-autorun", *tool_cmd], proj_path=testproj)
+        proc3 = run(
+            ["jumpthegun", "run", "--no-autorun", *tool_cmd], proj_path=testproj
+        )
     finally:
         run(["jumpthegun", "stop", tool_cmd[0]], proj_path=testproj, check=True)
 
@@ -134,12 +146,18 @@ def test_jumpthegun_autorun(testproj):
     assert proc3.returncode == without_jumpthegun_proc.returncode
 
 
-@pytest.mark.parametrize("signum", [signal.SIGINT, signal.SIGTERM, signal.SIGUSR1, signal.SIGUSR2])
+@pytest.mark.parametrize(
+    "signum", [signal.SIGINT, signal.SIGTERM, signal.SIGUSR1, signal.SIGUSR2]
+)
 def test_signal_forwarding(testproj, signum):
     subcmd = ["__test_sleep_and_exit_on_signal"]
     run(["jumpthegun", "start", subcmd[0]], proj_path=testproj, check=True)
     try:
-        proc: subprocess.Popen = run(["jumpthegun", "run", "--no-autorun", *subcmd], proj_path=testproj, background=True)
+        proc: subprocess.Popen = run(
+            ["jumpthegun", "run", "--no-autorun", *subcmd],
+            proj_path=testproj,
+            background=True,
+        )
         assert proc.stdout.readline() == b"Sleeping...\n"
         assert proc.poll() is None
         proc.send_signal(signum)
@@ -149,7 +167,9 @@ def test_signal_forwarding(testproj, signum):
         run(["jumpthegun", "stop", subcmd[0]], proj_path=testproj, check=True)
 
 
-def run(cmd: List[str], proj_path: Path, background: bool = False, check: bool = False) -> Union[subprocess.CompletedProcess, subprocess.Popen]:
+def run(
+    cmd: List[str], proj_path: Path, background: bool = False, check: bool = False
+) -> Union[subprocess.CompletedProcess, subprocess.Popen]:
     if background and check:
         raise ValueError("Must not set both background=True and check=True.")
 

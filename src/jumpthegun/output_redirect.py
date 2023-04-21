@@ -19,6 +19,7 @@ class SocketOutputRedirector:
     override stdout and stderr in a final manner.  At this point, any
     buffered data will be written to the socket.
     """
+
     def __init__(self):
         self._stdout_socket_writer = SocketWriter(prefix=b"1")
         self._stdout = io.TextIOWrapper(
@@ -38,10 +39,10 @@ class SocketOutputRedirector:
         prev_stderr = sys.stderr
 
         self._override_output_stream_write(
-            self._stdout, self._stdout_socket_writer, self._stdout_buffer,
+            self._stdout, self._stdout_socket_writer, self._stdout_buffer
         )
         self._override_output_stream_write(
-            self._stderr, self._stderr_socket_writer, self._stderr_buffer,
+            self._stderr, self._stderr_socket_writer, self._stderr_buffer
         )
         sys.stdout = self._stdout
         sys.stderr = self._stderr
@@ -88,6 +89,7 @@ class SocketWriter(io.RawIOBase):
 
     The socket is set after initialization via .set_socket().
     """
+
     _sock: Optional[socket.socket]
 
     def __init__(self, prefix: bytes) -> None:
