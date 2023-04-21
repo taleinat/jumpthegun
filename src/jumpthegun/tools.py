@@ -1,21 +1,20 @@
-import importlib
-import re
-import shutil
-import textwrap
-from functools import reduce
-from pathlib import Path
-from typing import Callable, Dict
+import sys
+from typing import Dict
+
+if sys.version_info < (3, 8):
+    from importlib_metadata import EntryPoint, entry_points
+else:
+    from importlib.metadata import EntryPoint, entry_points
 
 __all__ = [
     "get_tool_entrypoint",
-    "find_entrypoint_func_in_entrypoint_script",
     "ToolExceptionBase",
-    "InvalidToolName",
-    "UnsupportedTool",
+    "EntrypointNotFound",
+    "MultipleEntrypointFound",
 ]
 
 
-runners: Dict[str, str] = {
+testing_tools: Dict[str, str] = {
     "__test_sleep_and_exit_on_signal": "jumpthegun.testutils:sleep_and_exit_on_signal",
 }
 
@@ -30,90 +29,39 @@ class ToolExceptionBase(Exception):
         self.tool_name = tool_name
 
 
-class UnsupportedTool(ToolExceptionBase):
+class EntrypointNotFound(ToolExceptionBase):
     """Exception raised for unsupported CLI tools."""
 
     def __str__(self) -> str:
-        return f"Unsupported tool: {self.tool_name}"
+        return f"Console entrypoint not found: {self.tool_name}"
 
 
-class InvalidToolName(ToolExceptionBase):
+class MultipleEntrypointFound(ToolExceptionBase):
     """Exception raised for unsupported CLI tools."""
 
     def __str__(self) -> str:
-        return f"Invalid tool name: {self.tool_name}"
+        return f"Multiple console entrypoints: {self.tool_name}"
 
 
-def get_tool_entrypoint(tool_name: str) -> Callable[[], None]:
+def get_tool_entrypoint(tool_name: str) -> EntryPoint:
     """Get an entrypoint function for a CLI tool."""
-    tool_name = tool_name.strip().lower()
-    if "/" in tool_name or "\\" in tool_name:
-        raise InvalidToolName(tool_name=tool_name)
+    if tool_name in testing_tools:
+        entrypoint = EntryPoint(
+            name=tool_name,
+            value=testing_tools[tool_name],
+            group="console_scripts",
+        )
+        return entrypoint
 
-    entrypoint_str = runners.get(tool_name)
-    if entrypoint_str is None:
-        entrypoint_str = find_entrypoint_func_in_entrypoint_script(tool_name)
-        if entrypoint_str is None:
-            raise UnsupportedTool(tool_name=tool_name)
+    all_entrypoints = entry_points()
+    if hasattr(all_entrypoints, "select"):
+        entrypoints = all_entrypoints.select(name=tool_name, group="console_scripts")
+    else:
+        entrypoints = [ep for ep in all_entrypoints["console_scripts"] if ep.name == tool_name]
 
-    module_name, function_name = entrypoint_str.split(":")
-    module = importlib.import_module(module_name)
-    function = reduce(getattr, function_name.split("."), module)
-    return function
-
-
-SCRIPT_ENCODING_HEADER_RE = re.compile(
-    br'^#\s*-\*- coding: ([a-zA-Z0-9._-]+) -\*-\s*$',
-    re.MULTILINE,
-)
-# See distlib: https://github.com/pypa/distlib/blob/05375908c1b2d6b0e74bdeb574569d3609db9f56/distlib/scripts.py#L43-L50
-entrypoint_script_template = textwrap.dedent(r'''
-    import re
-    import sys
-    from %(module)s import %(import_name)s
-    if __name__ == '__main__':
-        sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
-        sys.exit(%(func)s())
-    ''')[1:]
-entrypoint_script_regexp_str = re.sub(
-    # Escape twice: Once because this is creating a regexp string, and again
-    # because this uses re.sub() on the regexp string.
-    re.escape(re.escape('%(')) + r'(\w+)' + re.escape(re.escape(')s')),
-    r'(?P<\1>(?:\\w|\\.)+)',
-    re.escape(entrypoint_script_template),
-)
-# Sometimes such entrypoint scripts have double-quotes rather than
-# single-quotes.
-# Example: https://src.fedoraproject.org/rpms/python-wheel/blob/rawhide/f/wheel-entrypoint
-entrypoint_script_any_quote_regexp_str = entrypoint_script_regexp_str.replace(
-    re.escape("'"), r'''['"]''',
-)
-ENTRYPOINT_SCRIPT_REGEXP = re.compile(
-    entrypoint_script_any_quote_regexp_str,
-    re.IGNORECASE,
-)
-
-
-def find_entrypoint_func_in_entrypoint_script(tool_name: str) -> str | None:
-    # Search for the executable.
-    executable_path = shutil.which(tool_name)
-    if executable_path is None:
-        return None
-
-    code_bytes = Path(executable_path).read_bytes()
-
-    # Decode unicode.
-    try:
-        if encoding_match := SCRIPT_ENCODING_HEADER_RE.search(code_bytes):
-            encoding = encoding_match.group(1).decode('ascii')
-        else:
-            encoding = "utf-8"
-        code = code_bytes.decode(encoding)
-    except UnicodeDecodeError:
-        # TODO: Warn
-        return None
-
-    # Try to find an entrypoint function in the script's code.
-    if entrypoint_script_match := ENTRYPOINT_SCRIPT_REGEXP.search(code):
-        groupdict = entrypoint_script_match.groupdict()
-        return f"{groupdict['module']}:{groupdict['func']}"
+    if not entrypoints:
+        raise EntrypointNotFound(tool_name)
+    elif len(entrypoints) == 1:
+        return next(iter(entrypoints))
+    else:
+        raise MultipleEntrypointFound(tool_name)

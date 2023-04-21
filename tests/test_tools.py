@@ -1,75 +1,14 @@
-import os
-import textwrap
-
 import pytest
 
-from jumpthegun.tools import find_entrypoint_func_in_entrypoint_script
-
-# Script 1: With encoding comment, using a class's method.
-script1_code = textwrap.dedent('''\
-    #!/nonexistent/path/to/fake/venv/bin/python
-    # -*- coding: utf-8 -*-
-    import re
-    import sys
-    from module_name.main import class_name
-    if __name__ == '__main__':
-        sys.argv[0] = re.sub(r'(-script\\.pyw|\\.exe)?$', '', sys.argv[0])
-        sys.exit(class_name.method_name())
-''')
-script1_entrypoint_str = "module_name.main:class_name.method_name"
-
-# Script 2: Without encoding comment, using a function.
-script2_code = textwrap.dedent('''\
-    #!/nonexistent/path/to/fake/venv/bin/python
-    import re
-    import sys
-    from module_name.submodule_name.main import func_name
-    if __name__ == '__main__':
-        sys.argv[0] = re.sub(r'(-script\\.pyw|\\.exe)?$', '', sys.argv[0])
-        sys.exit(func_name())
-''')
-script2_entrypoint_str = "module_name.submodule_name.main:func_name"
-
-# Script 3: Like script 2, but with double quotes.
-script3_code = textwrap.dedent('''\
-    #!/nonexistent/path/to/fake/venv/bin/python
-    import re
-    import sys
-    from module_name.submodule_name.main import func_name
-    if __name__ == "__main__":
-        sys.argv[0] = re.sub(r"(-script\\.pyw|\\.exe)?$", "", sys.argv[0])
-        sys.exit(func_name())
-''')
-script3_entrypoint_str = "module_name.submodule_name.main:func_name"
+from jumpthegun.tools import get_tool_entrypoint, ToolExceptionBase
 
 
-@pytest.mark.parametrize(
-    ["script_code", "entrypoint_str"],
-    [
-        (script1_code, script1_entrypoint_str),
-        (script2_code, script2_entrypoint_str),
-        (script3_code, script3_entrypoint_str),
-    ],
-    ids=[
-        "script1",
-        "script2",
-        "script3",
-    ],
-)
-def test_find_entrypoint_func_in_entrypoint_script(monkeypatch, tmp_path, script_code, entrypoint_str):
-    """Test parsing an entrypoint script.
-
-    Such scripts are created by pip and other tools which use distlib.
-    """
-    script_name = "_testing_tool_name_"
-    script_path = tmp_path / script_name
-    script_path.write_text(script_code)
-    script_path.chmod(0o777)
-    monkeypatch.setenv('PATH', str(tmp_path.resolve()), prepend=os.pathsep)
-    result = find_entrypoint_func_in_entrypoint_script(script_name)
-    assert result == entrypoint_str
-
-
-def test_find_entrypoint_func_in_entrypoint_script_nonexistent():
+def test_find_pip():
     """Test failing to find an entrypoint for a non-existent script."""
-    assert find_entrypoint_func_in_entrypoint_script("DOES_NOT_EXIST") is None
+    assert callable(get_tool_entrypoint("pip").load())
+
+
+def test_find_nonexistent_entrypoint():
+    """Test failing to find an entrypoint for a non-existent script."""
+    with pytest.raises(ToolExceptionBase):
+        get_tool_entrypoint("DOES_NOT_EXIST")
