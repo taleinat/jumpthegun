@@ -51,6 +51,13 @@ def testproj() -> Path:
         venv_path = get_bin_path(proj_dir).parent
         subprocess.run([sys.executable, "-m", "venv", str(venv_path.resolve())], check=True)
         bin_path = get_bin_path(proj_dir)
+        # Need pip >= 21.3 for editable installation without setup.py.
+        # See: https://pip.pypa.io/en/stable/news/#v21-3
+        subprocess.run(
+            [str(bin_path / "pip"), "install", "--upgrade", "pip >= 21.3"],
+            cwd=str(root_dir),
+            check=True,
+        )
         subprocess.run(
             [str(bin_path / "pip"), "install", "black", "flake8", "isort"],
             cwd=str(root_dir),

@@ -3,7 +3,7 @@ import functools
 import io
 import socket
 import sys
-from typing import Any, BinaryIO, Union, cast
+from typing import Any, BinaryIO, Optional, Union, cast
 
 
 class SocketOutputRedirector:
@@ -58,7 +58,7 @@ class SocketOutputRedirector:
         orig_write = stream.write
 
         @functools.wraps(orig_write)
-        def new_write(data: str, /):
+        def new_write(data: str):
             if not socket_writer.has_socket():
                 buffer.append(data)
                 return len(data)
@@ -88,7 +88,7 @@ class SocketWriter(io.RawIOBase):
 
     The socket is set after initialization via .set_socket().
     """
-    _sock: socket.socket | None
+    _sock: Optional[socket.socket]
 
     def __init__(self, prefix: bytes) -> None:
         self._sock = None
