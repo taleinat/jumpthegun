@@ -17,25 +17,6 @@ def get_bin_path(project_path: Path) -> Path:
     return venv_path / bin_dir_name
 
 
-# @pytest.fixture(scope="session")
-# def setup_testproj() -> Path:
-#     with tempfile.TemporaryDirectory() as tmp_dir:
-#         proj_dir = Path(tmp_dir) / "testproj"
-#         shutil.copytree(Path(__file__).parent / "testproj", proj_dir)
-#         venv_path = proj_dir / "venv"
-#         subprocess.run([sys.executable, "-mvenv", str(venv_path)])
-#         bin_path = get_bin_path(proj_dir)
-#         subprocess.run([str(bin_path / "pip"), "install", ".", "black", "flake8", "isort"], cwd=str(Path(__file__).parents[1]), check=True)
-#         yield proj_dir
-#
-#
-# @pytest.fixture
-# def testproj(setup_testproj, tmp_path) -> Path:
-#     proj_dir = Path(tmp_path) / "testproj"
-#     shutil.copytree(setup_testproj, proj_dir)
-#     yield proj_dir
-
-
 @pytest.fixture(scope="session")
 def testproj() -> Path:
     root_dir = Path(__file__).parent.parent
