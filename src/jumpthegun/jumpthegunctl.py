@@ -14,13 +14,12 @@ import time
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, BinaryIO, Optional, Set, Tuple, cast
+from typing import Any, BinaryIO, Optional, Tuple, cast
 
 from vendor.filelock import FileLock
 
 from .__version__ import __version__
 from .output_redirect import SocketOutputRedirector
-from .project import get_tool_names
 from .tools import ToolExceptionBase, get_tool_entrypoint
 from .utils import pid_exists
 
@@ -394,50 +393,15 @@ def main() -> None:
         (cmd, tool_name) = args
         tool_name = tool_name.strip().lower()
 
-        if tool_name == "all":
-            tool_names = get_tool_names(Path.cwd())
-            failed_for_tools: Set[str] = set()
-            for _tool_name in tool_names:
-                try:
-                    do_action(tool_name=_tool_name, action=cmd)
-                except ToolExceptionBase:
-                    failed_for_tools.add(_tool_name)
-
-            succeeded_for_tools = set(tool_names) - failed_for_tools
-            if cmd == "restart":
-                if succeeded_for_tools:
-                    print(
-                        "Restarted jumpthegun daemons for tools:",
-                        ", ".join(sorted(succeeded_for_tools)),
-                    )
-                    sys.exit(0)
-                if failed_for_tools:
-                    print(
-                        "Failed to restart jumpthegun daemons for tools:",
-                        ", ".join(sorted(failed_for_tools)),
-                    )
-                    sys.exit(1)
-            elif cmd == "start" or cmd == "stop":
-                if succeeded_for_tools:
-                    action_str = "Stopped" if cmd == "stop" else "Started"
-                    print(
-                        f"{action_str} jumpthegun daemons for tools:",
-                        ", ".join(sorted(succeeded_for_tools)),
-                    )
-                    sys.exit(0)
-                else:
-                    print(f"No tools to {cmd} jumpthegun daemons for.")
-                    sys.exit(0)
+        try:
+            do_action(tool_name=tool_name, action=cmd)
+        except ToolExceptionBase as exc:
+            print(str(exc))
+            sys.exit(1)
+        except InvalidCommand as exc:
+            print(str(exc))
         else:
-            try:
-                do_action(tool_name=tool_name, action=cmd)
-            except ToolExceptionBase as exc:
-                print(str(exc))
-                sys.exit(1)
-            except InvalidCommand as exc:
-                print(str(exc))
-            else:
-                sys.exit(0)
+            sys.exit(0)
 
     print_usage()
     sys.exit(1)
