@@ -17,15 +17,33 @@ def get_bin_path(project_path: Path) -> Path:
     return venv_path / bin_dir_name
 
 
+@pytest.fixture
+def testproj(request, testproj_with_jumpthegun, testproj_without_jumpthegun) -> Path:
+    testproj_name = getattr(request, "param", "testproj_without_jumpthegun")
+    if testproj_name == "testproj_with_jumpthegun":
+        return testproj_with_jumpthegun
+    elif testproj_name == "testproj_without_jumpthegun":
+        return testproj_without_jumpthegun
+
+
 @pytest.fixture(scope="session")
-def testproj() -> Path:
+def testproj_with_jumpthegun() -> Path:
+    return _setup_test_project("testproj_with_jumpthegun", with_jumpthegun=True)
+
+
+@pytest.fixture(scope="session")
+def testproj_without_jumpthegun() -> Path:
+    return _setup_test_project("testproj_without_jumpthegun", with_jumpthegun=False)
+
+
+def _setup_test_project(name: str, with_jumpthegun: bool) -> Path:
     root_dir = Path(__file__).parent.parent
     testenvs_dir = root_dir / ".testenvs"
     testenvs_dir.mkdir(exist_ok=True)
     ver_dir = testenvs_dir / sys.version.split()[0]
     ver_dir.mkdir(exist_ok=True)
 
-    proj_dir = ver_dir / "testproj"
+    proj_dir = ver_dir / name
     if not proj_dir.exists():
         sources_dir = Path(__file__).parent / "testproj"
         shutil.copytree(sources_dir, proj_dir)
@@ -35,23 +53,25 @@ def testproj() -> Path:
             check=True,
         )
         bin_path = get_bin_path(proj_dir)
-        # Need pip >= 21.3 for editable installation without setup.py.
-        # See: https://pip.pypa.io/en/stable/news/#v21-3
-        subprocess.run(
-            [str(bin_path / "pip"), "install", "--upgrade", "pip >= 21.3"],
-            cwd=str(root_dir),
-            check=True,
-        )
+        if with_jumpthegun:
+            # Need pip >= 21.3 for editable installation without setup.py.
+            # See: https://pip.pypa.io/en/stable/news/#v21-3
+            subprocess.run(
+                [str(bin_path / "pip"), "install", "--upgrade", "pip >= 21.3"],
+                cwd=str(root_dir),
+                check=True,
+            )
         subprocess.run(
             [str(bin_path / "pip"), "install", "black", "flake8", "isort"],
             cwd=str(root_dir),
             check=True,
         )
-        subprocess.run(
-            [str(bin_path / "pip"), "install", "-e", "."],
-            cwd=str(root_dir),
-            check=True,
-        )
+        if with_jumpthegun:
+            subprocess.run(
+                [str(bin_path / "pip"), "install", "-e", "."],
+                cwd=str(root_dir),
+                check=True,
+            )
         sleep_and_exit_on_signal_script = textwrap.dedent(
             """\
             #!/usr/bin/env python
@@ -62,10 +82,17 @@ def testproj() -> Path:
         )
         script_path = bin_path / "__test_sleep_and_exit_on_signal"
         script_path.write_text(sleep_and_exit_on_signal_script)
+        script_path.chmod(0o755)
 
-    yield proj_dir
+    return proj_dir
 
 
+@pytest.mark.parametrize(
+    "testproj",
+    ["testproj_with_jumpthegun", "testproj_without_jumpthegun"],
+    ids=["testproj_with_jumpthegun", "testproj_without_jumpthegun"],
+    indirect=True,
+)
 @pytest.mark.parametrize(
     "tool_cmd",
     [
@@ -128,6 +155,12 @@ def test_jumpthegun_autorun(testproj):
 
 
 @pytest.mark.parametrize(
+    "testproj",
+    ["testproj_with_jumpthegun", "testproj_without_jumpthegun"],
+    ids=["testproj_with_jumpthegun", "testproj_without_jumpthegun"],
+    indirect=True,
+)
+@pytest.mark.parametrize(
     "signum", [signal.SIGINT, signal.SIGTERM, signal.SIGUSR1, signal.SIGUSR2]
 )
 def test_signal_forwarding(testproj, signum):
@@ -157,7 +190,7 @@ def run(
     pass_through_env_vars = {
         key: value
         for key, value in os.environ.items()
-        if re.fullmatch(r"TMPDIR|USER|XDG_.*", key)
+        if re.fullmatch(r"HOME|TMPDIR|USER|XDG_.*", key)
     }
 
     bin_path = get_bin_path(proj_path).resolve()

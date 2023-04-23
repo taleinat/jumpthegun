@@ -20,11 +20,15 @@ formatting tools on just a few files in SCM hooks, such as via
 
 # Installation
 
-Install into the same Python env where you have tools like black or flake8
-installed:
+Install JumpTheGun into any Python environment (Python >= 3.7):
 
 ```shell
 pip install jumpthegun
+```
+
+Or use [pipx](https://pypa.github.io/pipx/):
+```shell
+pipx install jumpthegun
 ```
 
 
