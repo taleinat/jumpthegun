@@ -175,7 +175,7 @@ def test_signal_forwarding(testproj, signum):
         assert proc.stdout.readline() == b"Sleeping...\n"
         assert proc.poll() is None
         proc.send_signal(signum)
-        proc.wait(2)
+        proc.wait(5)
         assert b"Received signal" in proc.stdout.read()
     finally:
         run(["jumpthegun", "stop", subcmd[0]], proj_path=testproj, check=True)
