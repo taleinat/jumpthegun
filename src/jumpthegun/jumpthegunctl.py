@@ -14,7 +14,7 @@ import time
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, BinaryIO, Optional, Tuple, cast
+from typing import Any, BinaryIO, Dict, Optional, Tuple, cast
 
 from .__version__ import __version__
 from ._vendor.filelock import FileLock
@@ -294,8 +294,24 @@ def start(tool_name: str, daemonize: bool = True) -> None:
     conn.sendall(b"%d\n" % os.getpid())
 
     rfile = conn.makefile("rb", 0)
-    sys.argv[1:] = shlex.split(rfile.readline().strip().decode())
+
+    # Read and set argv
+    argv_bytes: bytes = rfile.read(int(rfile.readline()))
+    sys.argv[1:] = shlex.split(argv_bytes.decode())
     sys.argv[0] = tool_name
+
+    # Read and set cwd
+    pwd: bytes = rfile.read(int(rfile.readline()))
+    os.chdir(pwd)
+
+    # Read and set env vars
+    env_vars_str: str = rfile.read(int(rfile.readline())).decode()
+    split_lines = (line.split("=", 1) for line in env_vars_str.split("\0"))
+    env_vars: Dict[str, str] = dict(line for line in split_lines if len(line) == 2)
+    env_vars.pop("_", None)
+    for env_var_name in set(os.environ) - set(env_vars):
+        del os.environ[env_var_name]
+    os.environ.update(env_vars)
 
     sys.stdin.close()
     sys.stdin = io.TextIOWrapper(cast(BinaryIO, StdinWrapper(conn)))

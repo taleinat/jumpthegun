@@ -141,9 +141,26 @@ for sig in INT TERM USR1 USR2; do
   trap "forward_signal $sig" "$sig"
 done
 
+# Send strings with bytes len prepended.
+function send_with_bytes_len_prefix() {
+  to_send_str="$*"
+  to_send_bytes_len="$(echo -n "$to_send_str" | wc -c | cut -f1)"
+  printf '%d\n%s' "$to_send_bytes_len" "$to_send_str" >&3
+}
+
 
 # Send cmdline arguments.
-echo "$@" >&3
+send_with_bytes_len_prefix "$@"
+
+# Send cwd.
+send_with_bytes_len_prefix "$PWD"
+
+# Send env vars.
+x="$(mktemp)"
+env -0 > "$x" 2>/dev/null
+du -b "$x" | cut -f 1 >&3
+cat "$x" >&3
+rm "$x"
 
 
 # Read stdout and stderr from connection, line by line, and echo them.
