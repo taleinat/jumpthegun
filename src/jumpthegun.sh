@@ -158,7 +158,11 @@ send_with_bytes_len_prefix "$PWD"
 # Send env vars.
 x="$(mktemp)"
 env -0 > "$x" 2>/dev/null
-du -b "$x" | cut -f 1 >&3
+if [[ $OSTYPE == "darwin"* ]]; then
+  stat -f %z "$x" >&3
+else
+  stat -c %s "$x" >&3
+fi
 cat "$x" >&3
 rm "$x"
 
