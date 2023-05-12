@@ -208,7 +208,11 @@ def start(tool_name: str, daemonize: bool = True) -> None:
     output_redirector = SocketOutputRedirector()
     with output_redirector.override_outputs_for_imports():
         tool_entrypoint = get_tool_entrypoint(tool_name)
+        env_before = dict(os.environ)
         tool_runner = tool_entrypoint.load()
+        env_after = dict(os.environ)
+        changed_env_vars = dict(set(env_after.items()) - set(env_before.items()))
+        deleted_env_vars = set(env_before) - set(env_after)
 
     pid_file_path, port_file_path = get_pid_and_port_file_paths(tool_name)
 
@@ -309,6 +313,9 @@ def start(tool_name: str, daemonize: bool = True) -> None:
     split_lines = (line.split("=", 1) for line in env_vars_str.split("\0"))
     env_vars: Dict[str, str] = dict(line for line in split_lines if len(line) == 2)
     env_vars.pop("_", None)
+    for var_name in deleted_env_vars:
+        env_vars.pop(var_name, None)
+    env_vars.update(changed_env_vars)
     for env_var_name in set(os.environ) - set(env_vars):
         del os.environ[env_var_name]
     os.environ.update(env_vars)
