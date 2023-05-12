@@ -83,7 +83,8 @@ start|stop|restart|version|--version)
   fi
 
   # Run JumpTheGun.
-  exec "$python_executable" -c "from jumpthegun.jumpthegunctl import main; main()" "$@"
+  set -f  # Disable filename expansion (globbing).
+  exec $python_executable -c "from jumpthegun.jumpthegunctl import main; main()" "$@"
   ;;
 run)
   shift
