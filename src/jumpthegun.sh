@@ -142,19 +142,15 @@ for sig in INT TERM USR1 USR2; do
   trap "forward_signal $sig" "$sig"
 done
 
-# Send strings with bytes len prepended.
-function send_with_bytes_len_prefix() {
-  to_send_str="$*"
-  to_send_bytes_len="$(echo -n "$to_send_str" | wc -c | cut -f1)"
-  printf '%d\n%s' "$to_send_bytes_len" "$to_send_str" >&3
-}
-
-
-# Send cmdline arguments.
-send_with_bytes_len_prefix "$@"
-
-# Send cwd.
-send_with_bytes_len_prefix "$PWD"
+# Send argv and cwd.
+oLang="${LANG-}" oLcAll="${LC_ALL-}"
+LANG=C LC_ALL=C
+# Add an x in front to avoid special-casing having zero arguments.
+argv_str=$(printf ' %q' x "$@")
+# Remove the leading " x ".
+argv_str="${argv_str:3}"
+printf '%d\n%s%d\n%s' "${#argv_str}" "$argv_str" "${#PWD}" "$PWD" >&3
+LANG="$oLang" LC_ALL="$oLcAll"
 
 # Send env vars.
 x="$(mktemp)"
