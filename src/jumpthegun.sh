@@ -53,8 +53,9 @@ start|stop|restart|version|--version)
   tool_name="$2"
 
   # Find the tool's Python executable and check if it has JumpTheGun installed.
-  tool_path="$(command -v -- "$tool_name")"
-  shebang="$(head -n 1 -- "$tool_path")"
+  tool_path="$(command -v -- "$tool_name" 2>/dev/null)" || err_exit "Command not found: $tool_name"
+  shebang="$(head -n 1 -- "$tool_path" 2>/dev/null)"
+  [[ "${shebang:0:2}" == "#!" ]] || err_exit "No shebang (#!) found in script: $tool_path"
   if ! python_executable="$(${shebang#\#!} -c 'import sys; print(sys.executable); import jumpthegun' 2>/dev/null)"; then
     # Find JumpTheGun's code.
     SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
