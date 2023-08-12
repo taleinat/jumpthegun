@@ -1,23 +1,18 @@
-import hashlib
 import io
 import os
-import random
 import shlex
 import signal
 import socket
-import string
-import subprocess
 import sys
-import tempfile
 import time
 import traceback
 from pathlib import Path
 from typing import Any, BinaryIO, Dict, Optional, Tuple, cast
 
 from .__version__ import __version__
-from ._vendor.filelock import FileLock
 from .config import read_config
 from .output_redirect import SocketOutputRedirector
+from .runtime_dir import get_isolated_service_runtime_dir_for_tool
 from .tools import ToolExceptionBase, get_tool_entrypoint
 from .utils import pid_exists
 
@@ -85,57 +80,8 @@ class StdinWrapper(io.RawIOBase):
         return self._sock.fileno()
 
 
-def get_service_runtime_dir_path() -> Path:
-    runtime_dir = os.getenv("XDG_RUNTIME_DIR")
-    if runtime_dir:
-        service_runtime_dir = Path(runtime_dir) / "jumpthegun"
-        service_runtime_dir.mkdir(exist_ok=True, mode=0o700)
-        return service_runtime_dir
-
-    temp_dir_path = Path(tempfile.gettempdir())
-    service_runtime_dirs = list(
-        temp_dir_path.glob(f"jumpthegun-{os.getenv('USER')}-??????")
-    )
-    if service_runtime_dirs:
-        if len(service_runtime_dirs) > 1:
-            raise Exception("Error: Multiple service runtime dirs found.")
-        return service_runtime_dirs[0]
-
-    lock = FileLock(temp_dir_path / f"jumpthegun-{os.getenv('USER')}.lock")
-    with lock:
-        service_runtime_dirs = list(
-            temp_dir_path.glob(f"jumpthegun-{os.getenv('USER')}-??????")
-        )
-        if service_runtime_dirs:
-            return service_runtime_dirs[0]
-
-        random_part = "".join([random.choice(string.ascii_letters) for _i in range(6)])
-        service_runtime_dir = (
-            temp_dir_path / f"jumpthegun-{os.getenv('USER')}-{random_part}"
-        )
-        service_runtime_dir.mkdir(exist_ok=False, mode=0o700)
-        return service_runtime_dir
-
-
-def get_isolated_service_runtime_dir_path(tool_name) -> Path:
-    service_runtime_dir = get_service_runtime_dir_path()
-
-    tool_executable_path: bytes = subprocess.run(
-        f"command -v {shlex.quote(tool_name)}",
-        shell=True,
-        check=True,
-        capture_output=True,
-    ).stdout.strip()
-    tool_executable_dir_path: bytes = os.path.dirname(tool_executable_path)
-    isolation_hash: str = hashlib.sha256(tool_executable_dir_path).hexdigest()[:8]
-    isolated_path: Path = service_runtime_dir / isolation_hash
-
-    isolated_path.mkdir(exist_ok=True, mode=0o700)
-    return isolated_path
-
-
 def get_pid_and_port_file_paths(tool_name: str) -> Tuple[Path, Path]:
-    service_runtime_dir_path = get_isolated_service_runtime_dir_path(tool_name)
+    service_runtime_dir_path = get_isolated_service_runtime_dir_for_tool(tool_name)
     pid_file_path = service_runtime_dir_path / f"{tool_name}.pid"
     port_file_path = service_runtime_dir_path / f"{tool_name}.port"
     return pid_file_path, port_file_path
