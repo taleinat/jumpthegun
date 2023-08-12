@@ -1,6 +1,5 @@
 import hashlib
 import io
-import json
 import os
 import random
 import shlex
@@ -12,12 +11,12 @@ import sys
 import tempfile
 import time
 import traceback
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, BinaryIO, Dict, Optional, Tuple, cast
 
 from .__version__ import __version__
 from ._vendor.filelock import FileLock
+from .config import read_config
 from .output_redirect import SocketOutputRedirector
 from .tools import ToolExceptionBase, get_tool_entrypoint
 from .utils import pid_exists
@@ -84,40 +83,6 @@ class StdinWrapper(io.RawIOBase):
 
     def fileno(self) -> Any:
         return self._sock.fileno()
-
-
-def get_xdg_config_dir() -> Path:
-    env_var = os.environ.get("XDG_CONFIG_HOME")
-    if env_var:
-        return Path(env_var)
-    return Path.home() / ".config"
-
-
-@dataclass(frozen=True)
-class JumpTheGunConfig:
-    idle_timeout_seconds: Optional[int] = 4 * 60 * 60  # 4 hours
-
-    def __post_init__(self):
-        if self.idle_timeout_seconds is None:
-            pass
-        elif isinstance(self.idle_timeout_seconds, int):
-            if self.idle_timeout_seconds <= 0:
-                raise ValueError("idle_timeout_seconds must be positive.")
-        else:
-            raise TypeError("idle_timeout_seconds must be an int or None.")
-
-
-def read_config() -> JumpTheGunConfig:
-    config_dir = get_xdg_config_dir()
-    if not config_dir.exists():
-        return JumpTheGunConfig()
-    config_file = config_dir / "jumpthegun.json"
-    if not config_file.exists():
-        return JumpTheGunConfig()
-    with config_file.open(encoding="utf-8") as f:
-        config_data = json.load(f)
-    config = JumpTheGunConfig(**config_data)
-    return config
 
 
 def get_service_runtime_dir_path() -> Path:
