@@ -14,6 +14,7 @@ from .config import read_config
 from .output_redirect import SocketOutputRedirector
 from .runtime_dir import get_isolated_service_runtime_dir_for_tool
 from .tools import ToolExceptionBase, get_tool_entrypoint
+from .utils import daemonize as daemonize_func
 from .utils import pid_exists
 
 
@@ -133,31 +134,8 @@ def start(tool_name: str, daemonize: bool = True) -> None:
             raise DaemonAlreadyExistsError(tool_name=tool_name)
 
     if daemonize:
-        # Do the double-fork dance to daemonize.
-        # See:
-        # * https://stackoverflow.com/a/5386753
-        # * https://www.win.tue.nl/~aeb/linux/lk/lk-10.html
-
-        pid = os.fork()
-        if pid > 0:
-            print(f'"jumpthegun {tool_name}" daemon process starting...')
-            return
-
-        os.setsid()
-
-        pid = os.fork()
-        if pid > 0:
-            sys.exit(0)
-
-        # redirect standard file descriptors
-        sys.__stdout__.flush()
-        sys.__stderr__.flush()
-        stdin = open("/dev/null", "rb")
-        stdout = open("/dev/null", "ab")
-        stderr = open("/dev/null", "ab")
-        os.dup2(stdin.fileno(), sys.__stdin__.fileno())
-        os.dup2(stdout.fileno(), sys.__stdout__.fileno())
-        os.dup2(stderr.fileno(), sys.__stderr__.fileno())
+        print(f'"jumpthegun {tool_name}" daemon process starting...')
+        daemonize_func()
 
     # Write pid file.
     pid = os.getpid()

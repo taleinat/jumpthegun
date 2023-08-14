@@ -1,5 +1,6 @@
 import errno
 import os
+import sys
 
 
 def pid_exists(pid: int):
@@ -20,3 +21,26 @@ def pid_exists(pid: int):
             raise
     else:
         return True
+
+
+def daemonize():
+    """Do the double-fork dance to daemonize."""
+    # See:
+    # * https://stackoverflow.com/a/5386753
+    # * https://www.win.tue.nl/~aeb/linux/lk/lk-10.html
+    pid = os.fork()
+    if pid > 0:
+        sys.exit(0)
+    os.setsid()
+    pid = os.fork()
+    if pid > 0:
+        sys.exit(0)
+    # redirect standard file descriptors
+    sys.__stdout__.flush()
+    sys.__stderr__.flush()
+    stdin = open("/dev/null", "rb")
+    stdout = open("/dev/null", "ab")
+    stderr = open("/dev/null", "ab")
+    os.dup2(stdin.fileno(), sys.__stdin__.fileno())
+    os.dup2(stdout.fileno(), sys.__stdout__.fileno())
+    os.dup2(stderr.fileno(), sys.__stderr__.fileno())
