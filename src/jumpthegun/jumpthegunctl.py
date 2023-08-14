@@ -7,11 +7,11 @@ import sys
 import time
 import traceback
 from pathlib import Path
-from typing import Any, BinaryIO, Dict, Optional, Tuple, cast
+from typing import BinaryIO, Dict, Tuple, cast
 
 from .__version__ import __version__
 from .config import read_config
-from .output_redirect import SocketOutputRedirector
+from .io_redirect import SocketOutputRedirector, StdinWrapper
 from .runtime_dir import get_isolated_service_runtime_dir_for_tool
 from .tools import ToolExceptionBase, get_tool_entrypoint
 from .utils import daemonize as daemonize_func
@@ -36,49 +36,6 @@ class DaemonDoesNotExistError(ToolExceptionBase):
         return (
             f'Jump the Gun daemon process for tool "{self.tool_name}" does not exist.'
         )
-
-
-class StdinWrapper(io.RawIOBase):
-    """TODO!"""
-
-    def __init__(self, sock: socket.socket) -> None:
-        self._sock = sock
-        self._buf = bytearray()
-
-    def readable(self) -> bool:
-        return True
-
-    def writable(self) -> bool:
-        return False
-
-    def readline(self, size: Optional[int] = -1) -> bytes:
-        # print(f"readline({size=})", file=sys.__stdout__)
-        if size is None:
-            size = -1
-        self._sock.sendall(b"3\n")
-        buf = self._buf
-        while size:
-            chunk = self._sock.recv(size if size != -1 else 4096)
-            # print(f"CHUNK {chunk}", file=sys.__stdout__)
-            if not chunk:
-                self._buf = bytearray()
-                break
-            idx = chunk.find(10)  # ord("\n") == 10
-            if idx >= 0:
-                size = idx + 1
-            if len(chunk) >= size:
-                buf.extend(chunk[:size])
-                self._buf = bytearray(chunk[size:])
-                break
-            buf.extend(chunk)
-            size = size - len(chunk) if size != -1 else -1
-
-        return buf
-
-    read = readline
-
-    def fileno(self) -> Any:
-        return self._sock.fileno()
 
 
 def get_pid_and_port_file_paths(tool_name: str) -> Tuple[Path, Path]:

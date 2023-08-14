@@ -122,3 +122,47 @@ class SocketWriter(io.RawIOBase):
 
     def has_socket(self) -> bool:
         return self._sock is not None
+
+
+class StdinWrapper(io.RawIOBase):
+    """Input adapter implementing the file interface.
+
+    This reads lines from a socket in the JumpTheGun protocol.
+    """
+
+    def __init__(self, sock: socket.socket) -> None:
+        self._sock = sock
+        self._buf = bytearray()
+
+    def readable(self) -> bool:
+        return True
+
+    def writable(self) -> bool:
+        return False
+
+    def readline(self, size: Optional[int] = -1) -> bytes:
+        if size is None:
+            size = -1
+        self._sock.sendall(b"3\n")
+        buf = self._buf
+        while size:
+            chunk = self._sock.recv(size if size != -1 else 4096)
+            if not chunk:
+                self._buf = bytearray()
+                break
+            idx = chunk.find(10)  # ord("\n") == 10
+            if idx >= 0:
+                size = idx + 1
+            if len(chunk) >= size:
+                buf.extend(chunk[:size])
+                self._buf = bytearray(chunk[size:])
+                break
+            buf.extend(chunk)
+            size = size - len(chunk) if size != -1 else -1
+
+        return buf
+
+    read = readline
+
+    def fileno(self) -> Any:
+        return self._sock.fileno()
