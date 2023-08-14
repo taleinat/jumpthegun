@@ -110,7 +110,7 @@ def start(tool_name: str, daemonize: bool = True) -> None:
     sock.listen()
     print(f"Listening on {host}:{port} (pid={pid}) ...")
     sock.settimeout(config.idle_timeout_seconds)
-    subproc_pids = set()
+    subproc_pids: set[int] = set()
     try:
         while True:
             conn, address = sock.accept()
@@ -146,16 +146,18 @@ def start(tool_name: str, daemonize: bool = True) -> None:
     rfile = conn.makefile("rb", 0)
 
     # Read and set argv
-    argv_bytes: bytes = rfile.read(int(rfile.readline()))
-    sys.argv[1:] = shlex.split(argv_bytes.decode())
+    argv_bytes = rfile.read(int(rfile.readline()))
+    sys.argv[1:] = shlex.split(argv_bytes.decode()) if argv_bytes else []
     sys.argv[0] = tool_name
 
     # Read and set cwd
-    pwd: bytes = rfile.read(int(rfile.readline()))
+    pwd = rfile.read(int(rfile.readline()))
+    if not pwd:
+        raise Exception("Did not receive pwd from client.")
     os.chdir(pwd)
 
     # Read and set env vars
-    env_vars_str: str = rfile.read(int(rfile.readline())).decode()
+    env_vars_str: str = (rfile.read(int(rfile.readline())) or b"").decode()
     split_lines = (line.split("=", 1) for line in env_vars_str.split("\0"))
     env: Dict[str, str] = dict(line for line in split_lines if len(line) == 2)
     env.pop("_", None)
@@ -166,6 +168,7 @@ def start(tool_name: str, daemonize: bool = True) -> None:
     output_redirector.set_socket(conn)
 
     # start_time = time.monotonic()
+    exit_code: int
     try:
         retval = tool_runner()
     except BaseException as exc:
@@ -173,7 +176,7 @@ def start(tool_name: str, daemonize: bool = True) -> None:
         # print(f"Time: {end_time - start_time}", file=sys.__stdout__)
         # print("EXCEPTION", str(exc), file=sys.__stderr__)
         if isinstance(exc, SystemExit):
-            exit_code = exc.code
+            exit_code = exc.code if isinstance(exc.code, int) else 1
         else:
             traceback.print_exc()
             exit_code = 1

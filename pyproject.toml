@@ -76,3 +76,9 @@ line_length = 88
 skip_gitignore = true
 extend_skip_glob = ["src/jumpthegun/_vendor", "tests/testproj"]
 known_first_party = ["jumpthegun"]
+
+[tool.mypy]
+mypy_path='./src'
+exclude = [
+  "^tests/"
+]

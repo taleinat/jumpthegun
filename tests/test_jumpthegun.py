@@ -24,6 +24,8 @@ def testproj(request, testproj_with_jumpthegun, testproj_without_jumpthegun) -> 
         return testproj_with_jumpthegun
     elif testproj_name == "testproj_without_jumpthegun":
         return testproj_without_jumpthegun
+    else:
+        raise Exception(f"Invalid project name parameter provided: {testproj_name}")
 
 
 @pytest.fixture(scope="session")
@@ -102,7 +104,7 @@ def _setup_test_project(name: str, with_jumpthegun: bool) -> Path:
     ],
     ids=lambda tool_cmd: tool_cmd[0],
 )
-def test_jumpthegun_start_run_stop(testproj, tool_cmd):
+def test_jumpthegun_start_run_stop(testproj: Path, tool_cmd: List[str]) -> None:
     without_jumpthegun_proc = run(tool_cmd, proj_path=testproj)
     assert without_jumpthegun_proc.returncode != 0
 
@@ -124,7 +126,7 @@ def test_jumpthegun_start_run_stop(testproj, tool_cmd):
     assert proc2.returncode == without_jumpthegun_proc.returncode
 
 
-def test_jumpthegun_autorun(testproj):
+def test_jumpthegun_autorun(testproj: Path) -> None:
     tool_cmd = ["flake8"]
 
     without_jumpthegun_proc = run(tool_cmd, proj_path=testproj)
@@ -163,15 +165,16 @@ def test_jumpthegun_autorun(testproj):
 @pytest.mark.parametrize(
     "signum", [signal.SIGINT, signal.SIGTERM, signal.SIGUSR1, signal.SIGUSR2]
 )
-def test_signal_forwarding(testproj, signum):
+def test_signal_forwarding(testproj: Path, signum: int) -> None:
     subcmd = ["__test_sleep_and_exit_on_signal"]
     run(["jumpthegun", "start", subcmd[0]], proj_path=testproj, check=True)
     try:
-        proc: subprocess.Popen = run(
+        proc = run(
             ["jumpthegun", "run", "--no-autorun", *subcmd],
             proj_path=testproj,
             background=True,
         )
+        assert proc.stdout is not None
         assert proc.stdout.readline() == b"Sleeping...\n"
         assert proc.poll() is None
         proc.send_signal(signum)

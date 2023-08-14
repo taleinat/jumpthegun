@@ -1,5 +1,5 @@
 import sys
-from typing import Dict
+from typing import Dict, cast
 
 if sys.version_info < (3, 8):
     from importlib_metadata import EntryPoint, entry_points
@@ -60,13 +60,17 @@ def get_tool_entrypoint(tool_name: str) -> EntryPoint:
         )
         return entrypoint
 
+    entrypoints: tuple[EntryPoint, ...]
     all_entrypoints = entry_points()
     if hasattr(all_entrypoints, "select"):
-        entrypoints = all_entrypoints.select(name=tool_name, group="console_scripts")
+        entrypoints = cast(
+            tuple[EntryPoint, ...],
+            all_entrypoints.select(name=tool_name, group="console_scripts"),
+        )
     else:
-        entrypoints = [
+        entrypoints = tuple(
             ep for ep in all_entrypoints["console_scripts"] if ep.name == tool_name
-        ]
+        )
 
     if not entrypoints:
         raise EntrypointNotFound(tool_name)

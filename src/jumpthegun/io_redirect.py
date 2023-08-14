@@ -113,7 +113,7 @@ class SocketWriter(io.RawIOBase):
             return view.nbytes
 
     def fileno(self) -> Any:
-        return self._sock.fileno()
+        return self._sock.fileno() if self._sock is not None else None
 
     def set_socket(self, sock: socket.socket):
         if self._sock is not None:
