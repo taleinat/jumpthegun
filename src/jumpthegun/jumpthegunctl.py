@@ -11,6 +11,7 @@ from typing import BinaryIO, Dict, Tuple, cast
 
 from .__version__ import __version__
 from .config import read_config
+from .env_vars import apply_env_with_diff, calc_env_diff
 from .io_redirect import SocketOutputRedirector, StdinWrapper
 from .runtime_dir import get_isolated_service_runtime_dir_for_tool
 from .tools import ToolExceptionBase, get_tool_entrypoint
@@ -80,8 +81,7 @@ def start(tool_name: str, daemonize: bool = True) -> None:
         env_before = dict(os.environ)
         tool_runner = tool_entrypoint.load()
         env_after = dict(os.environ)
-        changed_env_vars = dict(set(env_after.items()) - set(env_before.items()))
-        deleted_env_vars = set(env_before) - set(env_after)
+        env_diff = calc_env_diff(env_before, env_after)
 
     pid_file_path, port_file_path = get_pid_and_port_file_paths(tool_name)
 
@@ -157,14 +157,9 @@ def start(tool_name: str, daemonize: bool = True) -> None:
     # Read and set env vars
     env_vars_str: str = rfile.read(int(rfile.readline())).decode()
     split_lines = (line.split("=", 1) for line in env_vars_str.split("\0"))
-    env_vars: Dict[str, str] = dict(line for line in split_lines if len(line) == 2)
-    env_vars.pop("_", None)
-    for var_name in deleted_env_vars:
-        env_vars.pop(var_name, None)
-    env_vars.update(changed_env_vars)
-    for env_var_name in set(os.environ) - set(env_vars):
-        del os.environ[env_var_name]
-    os.environ.update(env_vars)
+    env: Dict[str, str] = dict(line for line in split_lines if len(line) == 2)
+    env.pop("_", None)
+    apply_env_with_diff(env, env_diff)
 
     sys.stdin.close()
     sys.stdin = io.TextIOWrapper(cast(BinaryIO, StdinWrapper(conn)))
