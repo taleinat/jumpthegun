@@ -8,10 +8,10 @@ Make Python CLI tools win the speed race, by cheating!
 <a href="https://github.com/taleinat/jumpthegun/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/github/license/taleinat/jumpthegun"></a>
 
 ```shell
-# In any Python (>= 3.7) environment:
+# In any Python (>= 3.8) environment:
 pip install jumpthegun
 
-# For any CLI tool written in Python (>= 3.7):
+# For any CLI tool written in Python (>= 3.8):
 jumpthegun run <cli-tool> [...]
 
 # Example:

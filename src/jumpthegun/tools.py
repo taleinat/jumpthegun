@@ -1,10 +1,5 @@
-import sys
+from importlib.metadata import EntryPoint, entry_points
 from typing import Dict, cast
-
-if sys.version_info < (3, 8):
-    from importlib_metadata import EntryPoint, entry_points
-else:
-    from importlib.metadata import EntryPoint, entry_points
 
 __all__ = [
     "get_tool_entrypoint",
