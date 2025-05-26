@@ -3,25 +3,22 @@ repos:
   rev: 25.1.0
   hooks:
   - id: black
-    entry: jumpthegun run black
-    additional_dependencies:
-    - jumpthegun
+    entry: black --check
+    exclude: '^src/jumpthegun/_vendor|^tests/testproj'
 - repo: https://github.com/PyCQA/isort
   rev: 6.0.1
   hooks:
   - id: isort
-    entry: jumpthegun run isort
-    additional_dependencies:
-    - jumpthegun
+    entry: isort --check
+    exclude: '^src/jumpthegun/_vendor|^tests/testproj'
 - repo: https://github.com/PyCQA/flake8
   rev: 7.2.0
   hooks:
   - id: flake8
-    entry: jumpthegun run flake8
-    additional_dependencies:
-    - jumpthegun
+    entry: flake8
+    exclude: '^src/jumpthegun/_vendor|^tests/testproj'
 - repo: https://github.com/pre-commit/mirrors-mypy
   rev: v1.15.0
   hooks:
-    - id: mypy
-      exclude: '^tests/'
+  - id: mypy
+    exclude: '^src/jumpthegun/_vendor|^tests'
