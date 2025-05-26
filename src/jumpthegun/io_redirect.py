@@ -1,5 +1,4 @@
 import contextlib
-import functools
 import io
 import socket
 import sys
@@ -20,66 +19,44 @@ class SocketOutputRedirector:
     buffered data will be written to the socket.
     """
 
-    def __init__(self):
-        self._stdout_socket_writer = SocketWriter(prefix=b"1")
-        self._stdout = io.TextIOWrapper(
-            cast(BinaryIO, self._stdout_socket_writer), write_through=True
-        )
-        self._stderr_socket_writer = SocketWriter(prefix=b"2")
-        self._stderr = io.TextIOWrapper(
-            cast(BinaryIO, self._stderr_socket_writer), write_through=True
-        )
+    _stdout_buffer: io.StringIO
+    _stderr_buffer: io.StringIO
 
-        self._stdout_buffer = []
-        self._stderr_buffer = []
+    def __init__(self):
+        self._stdout_buffer = io.StringIO()
+        self._stderr_buffer = io.StringIO()
 
     @contextlib.contextmanager
     def override_outputs_for_imports(self):
         prev_stdout = sys.stdout
         prev_stderr = sys.stderr
 
-        self._override_output_stream_write(
-            self._stdout, self._stdout_socket_writer, self._stdout_buffer
-        )
-        self._override_output_stream_write(
-            self._stderr, self._stderr_socket_writer, self._stderr_buffer
-        )
-        sys.stdout = self._stdout
-        sys.stderr = self._stderr
+        sys.stdout = self._stdout_buffer
+        sys.stderr = self._stderr_buffer
         try:
             yield
         finally:
             sys.stdout = prev_stdout
             sys.stderr = prev_stderr
-            del self._stdout.write
-            del self._stderr.write
-
-    @classmethod
-    def _override_output_stream_write(cls, stream, socket_writer, buffer):
-        orig_write = stream.write
-
-        @functools.wraps(orig_write)
-        def new_write(data: str):
-            if not socket_writer.has_socket():
-                buffer.append(data)
-                return len(data)
-            else:
-                return orig_write(data)
-
-        stream.write = new_write
 
     def set_socket(self, conn: socket.socket):
-        self._stdout_socket_writer.set_socket(conn)
-        for chunk in self._stdout_buffer:
-            self._stdout.write(chunk)
+        stdout_socket_writer = SocketWriter(prefix=b"1")
+        stdout_socket_writer.set_socket(conn)
+        sock_stdout = io.TextIOWrapper(
+            cast(BinaryIO, stdout_socket_writer), write_through=True
+        )
+        sock_stdout.write(self._stdout_buffer.getvalue())
         sys.stdout.flush()
-        sys.stdout = self._stdout
+        sys.stdout = sock_stdout
 
-        self._stderr_socket_writer.set_socket(conn)
-        for chunk in self._stderr_buffer:
-            self._stderr.write(chunk)
+        stderr_socket_writer = SocketWriter(prefix=b"2")
+        stderr_socket_writer.set_socket(conn)
+        sock_stderr = io.TextIOWrapper(
+            cast(BinaryIO, stderr_socket_writer), write_through=True
+        )
+        sock_stderr.write(self._stderr_buffer.getvalue())
         sys.stderr.flush()
-        sys.stderr = self._stderr
+        sys.stderr = sock_stderr
 
 
 class SocketWriter(io.RawIOBase):
