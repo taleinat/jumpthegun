@@ -1,5 +1,6 @@
+import sys
 from importlib.metadata import EntryPoint, entry_points
-from typing import Dict, cast
+from typing import Dict
 
 __all__ = [
     "get_tool_entrypoint",
@@ -7,7 +8,6 @@ __all__ = [
     "EntrypointNotFound",
     "MultipleEntrypointFound",
 ]
-
 
 testing_tools: Dict[str, str] = {
     "__test_sleep_and_exit_on_signal": "jumpthegun.testutils:sleep_and_exit_on_signal",
@@ -57,14 +57,13 @@ def get_tool_entrypoint(tool_name: str) -> EntryPoint:
 
     entrypoints: tuple[EntryPoint, ...]
     all_entrypoints = entry_points()
-    if hasattr(all_entrypoints, "select"):
-        entrypoints = cast(
-            tuple[EntryPoint, ...],
-            all_entrypoints.select(name=tool_name, group="console_scripts"),
+    if sys.version_info < (3, 10):
+        entrypoints = tuple(
+            ep for ep in all_entrypoints["console_scripts"] if ep.name == tool_name
         )
     else:
         entrypoints = tuple(
-            ep for ep in all_entrypoints["console_scripts"] if ep.name == tool_name
+            all_entrypoints.select(group="console_scripts", name=tool_name)
         )
 
     if not entrypoints:
