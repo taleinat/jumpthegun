@@ -108,24 +108,21 @@ if [[ -z "$service_runtime_dir" ]]; then
   exec "$tool_name" "$@"
 fi
 
-# Calculate the isolated path for pid and port files.
+# Calculate the isolated path for pid and socket files.
 isolated_root="$(dirname "$(command -v -- "$tool_name")")"
 isolated_root_hash="$(hash_str "$isolated_root")"
 isolated_path="$service_runtime_dir/$isolated_root_hash"
 
-# Check that port file exists.
-if [[ ! -f "$isolated_path/$tool_name.port" ]]; then
+# Check that socket file exists.
+if [[ ! -f "$isolated_path/$tool_name.sock" ]]; then
   [[ autorun -eq 1 ]] && "${BASH_SOURCE[0]}" start "$tool_name" &>/dev/null &
   exec "$tool_name" "$@"
 fi
 
-# Read port from port file.
-IFS= read -r port <"$isolated_path/$tool_name.port"
+# Open Unix domain socket connection
+exec 3<>"$isolated_path/$tool_name.sock"
 
-# Open TCP connection.
-exec 3<>"/dev/tcp/127.0.0.1/$port"
-
-# Close TCP connection upon exit.
+# Close socket connection upon exit.
 function close_connection {
   exec 3<&-
 }
