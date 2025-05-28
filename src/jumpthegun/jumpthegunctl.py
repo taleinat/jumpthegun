@@ -39,15 +39,15 @@ class DaemonDoesNotExistError(ToolExceptionBase):
         )
 
 
-def get_pid_and_port_file_paths(tool_name: str) -> Tuple[Path, Path]:
+def get_pid_and_socket_file_paths(tool_name: str) -> Tuple[Path, Path]:
     service_runtime_dir_path = get_isolated_service_runtime_dir_for_tool(tool_name)
     pid_file_path = service_runtime_dir_path / f"{tool_name}.pid"
-    port_file_path = service_runtime_dir_path / f"{tool_name}.port"
-    return pid_file_path, port_file_path
+    socket_file_path = service_runtime_dir_path / f"{tool_name}.sock"
+    return pid_file_path, socket_file_path
 
 
-def remove_pid_and_port_files(tool_name: str) -> None:
-    for file_path in get_pid_and_port_file_paths(tool_name):
+def remove_pid_and_socket_files(tool_name: str) -> None:
+    for file_path in get_pid_and_socket_file_paths(tool_name):
         if file_path.exists():
             try:
                 file_path.unlink()
@@ -56,15 +56,15 @@ def remove_pid_and_port_files(tool_name: str) -> None:
 
 
 def daemon_teardown(
-    sock: socket.socket, pid: int, pid_file_path: Path, port_file_path: Path
+    sock: socket.socket, pid: int, pid_file_path: Path, socket_file_path: Path
 ) -> None:
-    """Close socket and remove pid and port files upon daemon shutdown."""
+    """Close socket and remove pid and socket files upon daemon shutdown."""
     sock.close()
     if pid_file_path.exists():
         file_pid = int(pid_file_path.read_text())
         if file_pid == pid:
             pid_file_path.unlink(missing_ok=True)
-            port_file_path.unlink(missing_ok=True)
+            socket_file_path.unlink(missing_ok=True)
 
 
 def start(tool_name: str, daemonize: bool = True) -> None:
@@ -83,7 +83,7 @@ def start(tool_name: str, daemonize: bool = True) -> None:
         env_after = dict(os.environ)
         env_diff = calc_env_diff(env_before, env_after)
 
-    pid_file_path, port_file_path = get_pid_and_port_file_paths(tool_name)
+    pid_file_path, socket_file_path = get_pid_and_socket_file_paths(tool_name)
 
     if pid_file_path.exists():
         file_pid = int(pid_file_path.read_text())
@@ -98,23 +98,21 @@ def start(tool_name: str, daemonize: bool = True) -> None:
     pid = os.getpid()
     pid_file_path.write_bytes(b"%d\n" % pid)
 
-    # Open socket.
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.bind(("127.0.0.1", 0))
-
-    # Write port file.
-    host, port = sock.getsockname()
-    port_file_path.write_bytes(b"%d\n" % port)
+    # Create and bind a Unix domain socket.
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    sock.bind(str(socket_file_path))
+    # Set socket permissions to be accessible only by the owner.
+    os.chmod(socket_file_path, 0o600)
 
     # Listen for connections.
     sock.listen()
-    print(f"Listening on {host}:{port} (pid={pid}) ...")
+    print(f"Listening on {socket_file_path} (pid={pid}) ...")
     sock.settimeout(config.idle_timeout_seconds)
     subproc_pids: set[int] = set()
     try:
         while True:
             conn, address = sock.accept()
-            print(f"Got connection from: {address}")
+            print("Got connection")
             newpid = os.fork()
             if newpid == 0:
                 break
@@ -127,12 +125,7 @@ def start(tool_name: str, daemonize: bool = True) -> None:
             subproc_pids.add(newpid)
     except BaseException as exc:
         # Server is exiting: Clean up as needed.
-        sock.close()
-        if pid_file_path.exists():
-            file_pid = int(pid_file_path.read_text())
-            if file_pid == pid:
-                pid_file_path.unlink(missing_ok=True)
-                port_file_path.unlink(missing_ok=True)
+        daemon_teardown(sock, pid, pid_file_path, socket_file_path)
         if isinstance(exc, socket.timeout):
             print(
                 f"Exiting after receiving no connections for {config.idle_timeout_seconds} seconds."
@@ -208,7 +201,7 @@ def stop(tool_name: str) -> None:
         raise DaemonDoesNotExistError(tool_name)
 
     try:
-        pid_file_path, _port_file_path = get_pid_and_port_file_paths(tool_name)
+        pid_file_path, _ = get_pid_and_socket_file_paths(tool_name)
         if not pid_file_path.exists():
             raise DaemonDoesNotExistError(tool_name)
 
@@ -227,7 +220,7 @@ def stop(tool_name: str) -> None:
         print(f'"jumpthegun {tool_name}" daemon process stopped.')
 
     finally:
-        remove_pid_and_port_files(tool_name)
+        remove_pid_and_socket_files(tool_name)
 
 
 def print_usage() -> None:
