@@ -77,14 +77,26 @@ def _setup_test_project(name: str, with_jumpthegun: bool) -> Path:
         sleep_and_exit_on_signal_script = textwrap.dedent(
             """\
             #!/usr/bin/env python
-            import jumpthegun.testutils
+            import sleep_and_exit_on_signal
 
-            jumpthegun.testutils.sleep_and_exit_on_signal()
+            sleep_and_exit_on_signal.main()
             """
         )
         script_path = bin_path / "__test_sleep_and_exit_on_signal"
         script_path.write_text(sleep_and_exit_on_signal_script)
         script_path.chmod(0o755)
+
+        module_file_path = (
+            bin_path.parent
+            / "lib"
+            / f"python{'.'.join(map(str, sys.version_info[:2]))}"
+            / "site-packages"
+            / "sleep_and_exit_on_signal.py"
+        )
+        shutil.copyfile(
+            Path(__file__).parent / "sleep_and_exit_on_signal.py",
+            module_file_path,
+        )
 
     return proj_dir
 

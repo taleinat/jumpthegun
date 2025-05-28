@@ -10,7 +10,7 @@ __all__ = [
 ]
 
 testing_tools: Dict[str, str] = {
-    "__test_sleep_and_exit_on_signal": "jumpthegun.testutils:sleep_and_exit_on_signal",
+    "__test_sleep_and_exit_on_signal": "sleep_and_exit_on_signal:main",
 }
 
 well_known_tools: Dict[str, str] = {

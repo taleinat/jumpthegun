@@ -3,7 +3,7 @@ import sys
 import time
 
 
-def sleep_and_exit_on_signal():
+def main():
     def signal_handler(signum, frame):
         print(f"Received signal: {signum}", flush=True)
         sys.exit()
