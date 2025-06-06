@@ -193,7 +193,13 @@ def test_signal_forwarding(testproj: Path, signum: int) -> None:
         proc.wait(5)
         assert b"Received signal" in proc.stdout.read()
     finally:
-        run(["jumpthegun", "stop", subcmd[0]], proj_path=testproj, check=True)
+        try:
+            run(["jumpthegun", "stop", subcmd[0]], proj_path=testproj, check=True)
+        except subprocess.CalledProcessError as stop_proc:
+            print("`jumpthegun stop` failed!")
+            print("stop proc stdout:", stop_proc.stdout.decode())
+            print("stop proc stderr:", stop_proc.stderr.decode())
+            raise
 
 
 def run(
