@@ -179,7 +179,9 @@ def test_jumpthegun_autorun(testproj: Path) -> None:
 )
 def test_signal_forwarding(testproj: Path, signum: int) -> None:
     subcmd = ["__test_sleep_and_exit_on_signal"]
-    run(["jumpthegun", "start", subcmd[0]], proj_path=testproj, check=True)
+    daemon_proc = run(
+        ["jumpthegun", "start", subcmd[0]], proj_path=testproj, check=True
+    )
     try:
         proc = run(
             ["jumpthegun", "run", "--no-autorun", *subcmd],
@@ -193,7 +195,19 @@ def test_signal_forwarding(testproj: Path, signum: int) -> None:
         proc.wait(5)
         assert b"Received signal" in proc.stdout.read()
     finally:
-        run(["jumpthegun", "stop", subcmd[0]], proj_path=testproj, check=True)
+        try:
+            run(["jumpthegun", "stop", subcmd[0]], proj_path=testproj, check=True)
+        except subprocess.CalledProcessError as stop_proc:
+            print("`jumpthegun stop` failed!")
+            print("stop proc stdout:", stop_proc.stdout.decode())
+            print("stop proc stderr:", stop_proc.stderr.decode())
+
+        if daemon_proc.poll() is not None:
+            print("jumpthegunctl daemon is still running!")
+            daemon_proc.terminate()
+
+        print("daemon proc stdout:", daemon_proc.stdout.decode())
+        print("daemon proc stderr:", daemon_proc.stderr.decode())
 
 
 def run(
