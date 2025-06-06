@@ -92,7 +92,7 @@ def start(tool_name: str, daemonize: bool = True) -> None:
 
     if daemonize:
         print(f'"jumpthegun {tool_name}" daemon process starting...')
-        daemonize_func()
+        daemonize_func(pid_file_path.with_suffix(".out"))
 
     # Write pid file.
     pid = os.getpid()

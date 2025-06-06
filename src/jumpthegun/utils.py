@@ -1,6 +1,7 @@
 import errno
 import os
 import sys
+from pathlib import Path
 
 
 def pid_exists(pid: int):
@@ -23,7 +24,7 @@ def pid_exists(pid: int):
         return True
 
 
-def daemonize():
+def daemonize(output_file_path: Path):
     """Do the double-fork dance to daemonize."""
     # See:
     # * https://stackoverflow.com/a/5386753
@@ -39,8 +40,7 @@ def daemonize():
     sys.__stdout__.flush()
     sys.__stderr__.flush()
     stdin = open("/dev/null", "rb")
-    stdout = open("/dev/null", "ab")
-    stderr = open("/dev/null", "ab")
+    stdouterr = open(output_file_path, "ab")
     os.dup2(stdin.fileno(), sys.__stdin__.fileno())
-    os.dup2(stdout.fileno(), sys.__stdout__.fileno())
-    os.dup2(stderr.fileno(), sys.__stderr__.fileno())
+    os.dup2(stdouterr.fileno(), sys.__stdout__.fileno())
+    os.dup2(stdouterr.fileno(), sys.__stderr__.fileno())

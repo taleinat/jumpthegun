@@ -10,6 +10,8 @@ from typing import List, Union
 
 import pytest
 
+from jumpthegun.jumpthegunctl import get_pid_and_socket_file_paths
+
 
 def get_bin_path(project_path: Path) -> Path:
     venv_path = project_path.with_name(project_path.name + "_venv")
@@ -199,6 +201,9 @@ def test_signal_forwarding(testproj: Path, signum: int) -> None:
             print("`jumpthegun stop` failed!")
             print("stop proc stdout:", stop_proc.stdout.decode())
             print("stop proc stderr:", stop_proc.stderr.decode())
+            pid_file, _ = get_pid_and_socket_file_paths(subcmd[0])
+            out_file = pid_file.with_suffix(".out")
+            print(out_file.read_text())
             raise
 
 
