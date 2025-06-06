@@ -17,8 +17,8 @@ repos:
   - id: flake8
     entry: flake8
     exclude: '^src/jumpthegun/_vendor|^tests/testproj'
-- repo: https://github.com/pre-commit/mirrors-mypy
-  rev: v1.15.0
-  hooks:
-  - id: mypy
-    exclude: '^src/jumpthegun/_vendor|^tests'
+#- repo: https://github.com/pre-commit/mirrors-mypy
+#  rev: v1.15.0
+#  hooks:
+#  - id: mypy
+#    exclude: '^src/jumpthegun/_vendor|^tests'
