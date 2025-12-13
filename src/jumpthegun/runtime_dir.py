@@ -34,7 +34,7 @@ def get_jumpthegun_runtime_dir() -> Path:
         if service_runtime_dirs:
             return service_runtime_dirs[0]
 
-        random_part = "".join([random.choice(string.ascii_letters) for _i in range(6)])
+        random_part = "".join(random.choices(string.ascii_letters, k=6))
         service_runtime_dir = (
             temp_dir_path / f"jumpthegun-{os.getenv('USER')}-{random_part}"
         )
