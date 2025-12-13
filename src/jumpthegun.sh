@@ -108,19 +108,19 @@ if [[ -z "$service_runtime_dir" ]]; then
   exec "$tool_name" "$@"
 fi
 
-# Calculate the isolated path for pid and socket files.
-isolated_root="$(dirname "$(command -v -- "$tool_name")")"
-isolated_root_hash="$(hash_str "$isolated_root")"
-isolated_path="$service_runtime_dir/$isolated_root_hash"
+# Calculate the unique path for pid and socket files.
+tool_path="$(command -v -- "$tool_name")"
+tool_path_hash="$(hash_str "$tool_path")"
+unique_paths_base="$service_runtime_dir/$tool_path_hash"
 
 # Check that socket file exists.
-if [[ ! -f "$isolated_path/$tool_name.sock" ]]; then
+if [[ ! -f "$unique_paths_base.sock" ]]; then
   [[ autorun -eq 1 ]] && "${BASH_SOURCE[0]}" start "$tool_name" &>/dev/null &
   exec "$tool_name" "$@"
 fi
 
 # Open Unix domain socket connection
-exec 3<>"$isolated_path/$tool_name.sock"
+exec 3<>"$unique_path_base.sock"
 
 # Close socket connection upon exit.
 function close_connection {

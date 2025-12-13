@@ -42,20 +42,17 @@ def get_jumpthegun_runtime_dir() -> Path:
         return service_runtime_dir
 
 
-def get_isolated_service_runtime_dir_for_tool(tool_name: str) -> Path:
+def get_unique_paths_base_for_tool(tool_name: str) -> Path:
     tool_executable_path: bytes = subprocess.run(
         f"command -v {shlex.quote(tool_name)}",
         shell=True,
         check=True,
         capture_output=True,
     ).stdout.strip()
-    return get_isolated_service_runtime_dir_for_executable(tool_executable_path)
+    return get_unique_paths_base_for_executable(tool_executable_path)
 
 
-def get_isolated_service_runtime_dir_for_executable(executable_path: bytes) -> Path:
-    executable_dir = os.path.dirname(executable_path)
-    isolation_hash: str = hashlib.sha256(executable_dir).hexdigest()[:8]
-    isolated_path: Path = get_jumpthegun_runtime_dir() / isolation_hash
-
-    isolated_path.mkdir(exist_ok=True, mode=0o700)
-    return isolated_path
+def get_unique_paths_base_for_executable(executable_path: bytes) -> Path:
+    tool_path_hash: str = hashlib.sha256(executable_path).hexdigest()[:8]
+    unique_paths_base: Path = get_jumpthegun_runtime_dir() / tool_path_hash
+    return unique_paths_base

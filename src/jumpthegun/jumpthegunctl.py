@@ -13,7 +13,7 @@ from .__version__ import __version__
 from .config import read_config
 from .env_vars import apply_env_with_diff, calc_env_diff
 from .io_redirect import SocketOutputRedirector, StdinWrapper
-from .runtime_dir import get_isolated_service_runtime_dir_for_tool
+from .runtime_dir import get_unique_paths_base_for_tool
 from .tools import ToolExceptionBase, get_tool_entrypoint
 from .utils import daemonize as daemonize_func
 from .utils import pid_exists
@@ -40,9 +40,9 @@ class DaemonDoesNotExistError(ToolExceptionBase):
 
 
 def get_pid_and_socket_file_paths(tool_name: str) -> Tuple[Path, Path]:
-    service_runtime_dir_path = get_isolated_service_runtime_dir_for_tool(tool_name)
-    pid_file_path = service_runtime_dir_path / f"{tool_name}.pid"
-    socket_file_path = service_runtime_dir_path / f"{tool_name}.sock"
+    unique_paths_base = get_unique_paths_base_for_tool(tool_name)
+    pid_file_path = unique_paths_base.with_suffix(".pid")
+    socket_file_path = unique_paths_base.with_suffix(".sock")
     return pid_file_path, socket_file_path
 
 
