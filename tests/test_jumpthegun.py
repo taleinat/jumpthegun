@@ -77,8 +77,8 @@ def _setup_test_project(name: str, with_jumpthegun: bool) -> Path:
                 check=True,
             )
         sleep_and_exit_on_signal_script = textwrap.dedent(
-            """\
-            #!/usr/bin/env python
+            f"""\
+            #!{str(bin_path.absolute() / "python")}
             import sleep_and_exit_on_signal
 
             sleep_and_exit_on_signal.main()
