@@ -36,11 +36,16 @@ def daemonize(output_file_path: Path):
     pid = os.fork()
     if pid > 0:
         sys.exit(0)
+
     # redirect standard file descriptors
-    sys.__stdout__.flush()
-    sys.__stderr__.flush()
-    stdin = open("/dev/null", "rb")
-    stdouterr = open(output_file_path, "ab")
-    os.dup2(stdin.fileno(), sys.__stdin__.fileno())
-    os.dup2(stdouterr.fileno(), sys.__stdout__.fileno())
-    os.dup2(stdouterr.fileno(), sys.__stderr__.fileno())
+    if sys.__stdin__ is not None:
+        stdin = open("/dev/null", "rb")
+        os.dup2(stdin.fileno(), sys.__stdin__.fileno())
+    if sys.__stdout__ is not None or sys.__stderr__ is not None:
+        stdouterr = open(output_file_path, "ab")
+        if sys.__stdout__ is not None:
+            sys.__stdout__.flush()
+            os.dup2(stdouterr.fileno(), sys.__stdout__.fileno())
+        if sys.__stderr__ is not None:
+            sys.__stderr__.flush()
+            os.dup2(stdouterr.fileno(), sys.__stderr__.fileno())
